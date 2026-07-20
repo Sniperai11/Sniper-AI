@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Cairo", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+@media print {
+  /* Reset background and scroll context */
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Force the scroll container main element to expand completely */
+  main {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    position: static !important;
+  }
+
+  /* Hide sidebar navigation, headers, footers, settings pane, forms, and all action buttons */
+  aside, header, footer, button, select, input, .no-print {
+    display: none !important;
+  }
+
+  /* Make the printable container expand to 100% width and display cleanly on paper */
+  #printable-report {
+    border: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    position: static !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure text inside the report has premium high-contrast black/grey colors on light backgrounds */
+  #printable-report * {
+    color: #090d16 !important;
+    background-color: transparent !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  /* Force specific headers and labels to be distinct */
+  #printable-report h3, #printable-report h4 {
+    font-weight: 800 !important;
+    color: #020617 !important;
+  }
+
+  /* Styling borders for separation elements */
+  .border-b, .border-t, .border {
+    border-color: #e2e8f0 !important;
+  }
+}
