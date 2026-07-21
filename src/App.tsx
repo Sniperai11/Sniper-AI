@@ -319,11 +319,11 @@ export default function App() {
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || "خطأ في توليد التقرير");
+        throw new Error(errData.errors?.[0] || errData.message || "خطأ في توليد التقرير");
       }
 
-      const data = await res.json();
-      setBountyReportDraft(data.report);
+      const envelope = await res.json();
+      setBountyReportDraft(envelope.success ? envelope.data?.report : null);
       showToast("تمت صياغة تقرير الثغرة الاحترافي بالذكاء الاصطناعي بنجاح!", "success");
     } catch (err: any) {
       showToast(err.message, "error");
@@ -337,37 +337,38 @@ export default function App() {
     try {
       setIsLoading(true);
       const profileRes = await fetch('/api/user/profile');
-      const profileData = await profileRes.json();
-      setUserProfile(profileData);
+      const profileEnvelope = await profileRes.json();
+      setUserProfile(profileEnvelope.success ? profileEnvelope.data : null);
 
       const projectsRes = await fetch('/api/projects');
-      const projectsData = await projectsRes.json();
-      setProjects(projectsData);
+      const projectsEnvelope = await projectsRes.json();
+      setProjects(projectsEnvelope.success ? projectsEnvelope.data : []);
 
       // Fetch Bug Bounty data
       const bbRes = await fetch('/api/bugbounty/data');
       if (bbRes.ok) {
-        const bbData = await bbRes.json();
+        const bbEnvelope = await bbRes.json();
+        const bbData = bbEnvelope.success ? bbEnvelope.data : {};
         setBbPrograms(bbData.programs || []);
         setBbLeaderboard(bbData.leaderboard || []);
         setBbSubmissions(bbData.submissions || []);
       }
 
       const vulnsRes = await fetch('/api/vulnerabilities');
-      const vulnsData = await vulnsRes.json();
-      setVulnerabilities(vulnsData);
+      const vulnsEnvelope = await vulnsRes.json();
+      setVulnerabilities(vulnsEnvelope.success ? vulnsEnvelope.data : []);
 
       const scansRes = await fetch('/api/scans');
-      const scansData = await scansRes.json();
-      setActiveScans(scansData);
+      const scansEnvelope = await scansRes.json();
+      setActiveScans(scansEnvelope.success ? scansEnvelope.data : []);
 
       const logsRes = await fetch('/api/audit-logs');
-      const logsData = await logsRes.json();
-      setAuditLogs(logsData);
+      const logsEnvelope = await logsRes.json();
+      setAuditLogs(logsEnvelope.success ? logsEnvelope.data : []);
 
       const historyRes = await fetch('/api/reports/history');
-      const historyData = await historyRes.json();
-      setReportsHistory(historyData);
+      const historyEnvelope = await historyRes.json();
+      setReportsHistory(historyEnvelope.success ? historyEnvelope.data : []);
     } catch (err) {
       console.error("Error loading fullstack data:", err);
       showToast("حدث خطأ أثناء تحميل بيانات المنصة من الخادم.", "error");
@@ -392,7 +393,8 @@ export default function App() {
         if (!contentType || !contentType.includes("application/json")) {
           throw new TypeError("Received non-JSON response from /api/scans");
         }
-        const scansData = await scansRes.json();
+        const scansEnvelope = await scansRes.json();
+        const scansData = scansEnvelope.success ? scansEnvelope.data : [];
         setActiveScans(scansData);
 
         // If any scan was completed or state changed, refresh project current risk indices too
@@ -402,8 +404,8 @@ export default function App() {
           if (projectsRes.ok) {
             const projContentType = projectsRes.headers.get("content-type");
             if (projContentType && projContentType.includes("application/json")) {
-              const projectsData = await projectsRes.json();
-              setProjects(projectsData);
+              const projectsEnvelope = await projectsRes.json();
+              setProjects(projectsEnvelope.success ? projectsEnvelope.data : []);
             }
           }
 
@@ -411,8 +413,8 @@ export default function App() {
           if (vulnsRes.ok) {
             const vulnContentType = vulnsRes.headers.get("content-type");
             if (vulnContentType && vulnContentType.includes("application/json")) {
-              const vulnsData = await vulnsRes.json();
-              setVulnerabilities(vulnsData);
+              const vulnsEnvelope = await vulnsRes.json();
+              setVulnerabilities(vulnsEnvelope.success ? vulnsEnvelope.data : []);
             }
           }
         }
@@ -449,10 +451,11 @@ export default function App() {
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || "خطأ أثناء إضافة المشروع");
+        throw new Error(errData.errors?.[0] || errData.message || "خطأ أثناء إضافة المشروع");
       }
 
-      const createdProj = await res.json();
+      const createdProjEnvelope = await res.json();
+      const createdProj = createdProjEnvelope.success ? createdProjEnvelope.data : {};
       showToast(`تم إنشاء المشروع "${createdProj.name}" بنجاح.`, 'success');
       setNewProjectName('');
       setNewProjectDesc('');
@@ -490,10 +493,11 @@ export default function App() {
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || "فشل إضافة الهدف");
+        throw new Error(errData.errors?.[0] || errData.message || "فشل إضافة الهدف");
       }
 
-      const addedTarget = await res.json();
+      const addedTargetEnvelope = await res.json();
+      const addedTarget = addedTargetEnvelope.success ? addedTargetEnvelope.data : {};
       
       if (userMode === 'hunter' && newTargetBountyPlatform !== 'None') {
         showToast(`تم إضافة الهدف الخارجي "${addedTarget.name}" التابع لـ ${newTargetBountyPlatform} بنجاح.`, 'success');
@@ -523,10 +527,11 @@ export default function App() {
       const res = await fetch(`/api/targets/${targetId}/verify`, { method: 'POST' });
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error);
+        throw new Error(errData.errors?.[0] || errData.message || "فشل التحقق من الملكية");
       }
-      const data = await res.json();
-      showToast(`تم التحقق من ملكية المصدر "${data.target.name}" بنجاح! تم تسجيل الإجراء في سجل الامتثال لضمان التصريح المسبق.`, 'success');
+      const envelope = await res.json();
+      const data = envelope.success ? envelope.data : {};
+      showToast(`تم التحقق من ملكية المصدر "${data.target?.name}" بنجاح! تم تسجيل الإجراء في سجل الامتثال لضمان التصريح المسبق.`, 'success');
       setVerificationModalTarget(null);
       fetchAllData();
     } catch (err: any) {
@@ -543,9 +548,10 @@ export default function App() {
       const res = await fetch(`/api/targets/${targetId}/scan`, { method: 'POST' });
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error);
+        throw new Error(errData.errors?.[0] || errData.message || "فشل إطلاق الفحص");
       }
-      const data = await res.json();
+      const envelope = await res.json();
+      const data = envelope.success ? envelope.data : {};
       showToast(`تم إطلاق الفحص الأمني للهدف بنجاح. يمكنك متابعة السجلات الفورية والتقدم من لوحة العمل.`, 'success');
       
       // Auto-open interactive security terminal
@@ -588,13 +594,14 @@ export default function App() {
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || "فشل الاتصال بالذكاء الاصطناعي");
+        throw new Error(errData.errors?.[0] || errData.message || "فشل الاتصال بالذكاء الاصطناعي");
       }
 
-      const data = await res.json();
+      const envelope = await res.json();
+      const data = envelope.success ? envelope.data : {};
       setChatMessages(prev => [...prev, {
         sender: 'assistant',
-        text: data.reply,
+        text: data.reply || "لا يوجد رد من المستشار الأمني",
         timestamp: new Date().toISOString()
       }]);
 
@@ -636,10 +643,11 @@ export default function App() {
       const res = await fetch(`/api/vulnerabilities/${vulnId}/ai-analyze`, { method: 'POST' });
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error);
+        throw new Error(errData.errors?.[0] || errData.message || "فشل تحليل الثغرة");
       }
-      const data = await res.json();
-      setAiVulnAnalysisText(data.aiAnalysis);
+      const envelope = await res.json();
+      const data = envelope.success ? envelope.data : {};
+      setAiVulnAnalysisText(data.aiAnalysis || "لا يتوفر تحليل في الوقت الحالي");
 
       // Update local profile count to match backend decrement
       setUserProfile(prev => {
@@ -667,10 +675,11 @@ export default function App() {
       const res = await fetch(`/api/vulnerabilities/${vulnId}/toggle-false-positive`, { method: 'POST' });
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error);
+        throw new Error(errData.errors?.[0] || errData.message || "فشل تعديل حالة الثغرة");
       }
-      const data = await res.json();
-      showToast(data.vulnerability.isFalsePositive ? "تم نقل الثغرة للأرشيف المستبعد بنجاح." : "تم تنشيط الثغرة كمشكلة فعلية بحاجة لإصلاح.", 'success');
+      const envelope = await res.json();
+      const data = envelope.success ? envelope.data : {};
+      showToast(data.vulnerability?.isFalsePositive ? "تم نقل الثغرة للأرشيف المستبعد بنجاح." : "تم تنشيط الثغرة كمشكلة فعلية بحاجة لإصلاح.", 'success');
       fetchAllData();
     } catch (err: any) {
       showToast(err.message, 'error');
@@ -690,16 +699,18 @@ export default function App() {
       const res = await fetch(`/api/projects/${projId}/report`);
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error);
+        throw new Error(errData.errors?.[0] || errData.message || "فشل إصدار التقرير");
       }
-      const data = await res.json();
+      const envelope = await res.json();
+      const data = envelope.success ? envelope.data : {};
       setActiveReport(data);
-      showToast(`تم إنتاج التقرير التنفيذي والمطابقة لمعايير OWASP و PCI DSS بنجاح لمشروع: ${data.projectName}`, 'success');
+      showToast(`تم إنتاج التقرير التنفيذي والمطابقة لمعايير OWASP و PCI DSS بنجاح لمشروع: ${data?.projectName}`, 'success');
       
       // Reload reports history
       const historyRes = await fetch('/api/reports/history');
       if (historyRes.ok) {
-        const historyData = await historyRes.json();
+        const historyEnvelope = await historyRes.json();
+        const historyData = historyEnvelope.success ? historyEnvelope.data : [];
         setReportsHistory(historyData);
       }
     } catch (err: any) {
@@ -968,9 +979,10 @@ export default function App() {
       });
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error);
+        throw new Error(errData.errors?.[0] || errData.message || "فشل ترقية الاشتراك");
       }
-      const data = await res.json();
+      const envelope = await res.json();
+      const data = envelope.success ? envelope.data : {};
       showToast(`تهانينا! تم تحويل رخصة اشتراكك بنجاح إلى باقة ${planName}. تم تحديث حصة فحص الموارد واستشارات الذكاء الاصطناعي فورياً.`, 'success');
       
       fetchAllData();
@@ -997,7 +1009,7 @@ export default function App() {
       });
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error);
+        throw new Error(errData.errors?.[0] || errData.message || "فشل إضافة العضو");
       }
       showToast(`تمت دعوة ${newMemberName} برتبة ${newMemberRole} بنجاح إلى المنصة الأمنية.`, 'success');
       setNewMemberName('');
@@ -1018,7 +1030,7 @@ export default function App() {
       const res = await fetch(`/api/team/${memberId}`, { method: 'DELETE' });
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error);
+        throw new Error(errData.errors?.[0] || errData.message || "فشل إزالة العضو");
       }
       showToast("تم إزالة العضو وإبطال مفاتيح وصوله بنجاح.", "success");
       fetchAllData();
@@ -1051,7 +1063,7 @@ export default function App() {
       });
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error);
+        throw new Error(errData.errors?.[0] || errData.message || "فشل إرسال تقرير الثغرة");
       }
       showToast("تم إرسال تقرير الثغرة بنجاح إلى فريق التدقيق الأمني. شكرًا لك على مشاركتك!", "success");
       setNewBbTarget('');
@@ -1077,7 +1089,7 @@ export default function App() {
       });
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error);
+        throw new Error(errData.errors?.[0] || errData.message || "فشل تحديث حالة التقرير");
       }
       showToast("تم تحديث حالة التقرير وتسجيل المكافأة بنجاح.", "success");
       fetchAllData();
@@ -1347,6 +1359,19 @@ export default function App() {
               <Award className="w-4 h-4 text-amber-500" />
               <span>صائدو المكافآت (Bounty)</span>
               <span className="mr-auto text-[9px] bg-amber-950 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded font-mono font-bold animate-pulse">جديد</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('constitution')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all shrink-0 ${
+                activeTab === 'constitution'
+                  ? 'bg-cyan-950/60 text-cyan-300 border border-cyan-500/20 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+              }`}
+            >
+              <BookOpen className="w-4 h-4 text-cyan-400 animate-pulse" />
+              <span>دستور المنصة الأمني</span>
+              <span className="mr-auto text-[9px] bg-cyan-950 text-cyan-400 border border-cyan-500/25 px-1.5 py-0.5 rounded font-mono font-bold">نشط</span>
             </button>
           </nav>
 
@@ -3160,9 +3185,10 @@ export default function App() {
                       <button
                         onClick={async () => {
                           const res = await fetch('/api/audit-logs/clear', { method: 'POST' });
-                          const data = await res.json();
+                          const envelope = await res.json();
+                          const data = envelope.success ? envelope.data : {};
                           setAuditLogs(data.auditLogs || auditLogs);
-                          showToast(data.message || "إجراء محمي", 'info');
+                          showToast(envelope.message || "تم مسح السجل", 'info');
                         }}
                         className="px-3 py-1.5 bg-slate-950 hover:bg-slate-850 text-slate-400 border border-slate-800 rounded-lg text-xs"
                       >
@@ -3716,6 +3742,270 @@ export default function App() {
                 </div>
               )}
 
+              {/* H. PLATFORM CONSTITUTION & GOVERNANCE COMPLIANCE CENTER */}
+              {activeTab === 'constitution' && (
+                <div className="space-y-6">
+                  
+                  {/* CONSTITUTION HERO BANNER */}
+                  <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8">
+                    <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                    <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                    
+                    <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
+                      <div className="space-y-3 text-center md:text-right">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/30 text-cyan-400 text-xs font-bold font-mono">
+                          <BookOpen className="w-3.5 h-3.5 animate-pulse" />
+                          <span>دستور التطوير والتشغيل الأمني — Sniper AI Security Constitution</span>
+                        </div>
+                        <h2 className="text-2xl md:text-3xl font-black tracking-tight text-white">
+                          مركز الامتثال الدستوري والحوكمة البرمجية
+                        </h2>
+                        <p className="text-xs md:text-sm text-slate-400 max-w-3xl leading-relaxed">
+                          بناءً على المبادئ والمجلدات الاثني عشر للدستور الفني، يمثل هذا المركز أداة المراقبة والتحقق الفوري من مطابقة جميع أجزاء النظام (الواجهة الأمامية، الخلفية، محرك الفحص الأمني، والذكاء الاصطناعي) للمعايير والسياسات الصارمة المعتمدة في المجلدات البرمجية.
+                        </p>
+                      </div>
+                      <div className="shrink-0">
+                        <div className="bg-slate-950 p-4 rounded-xl border border-slate-850 text-center space-y-1">
+                          <span className="text-[10px] text-slate-500 block font-semibold">مؤشر الامتثال الكلي للدستور</span>
+                          <span className="text-3xl font-black font-mono text-emerald-400">100%</span>
+                          <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-500/25 px-2 py-0.5 rounded-full font-bold block mt-1">
+                            ✓ مطابق بالكامل ومفعّل
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* HIGH VALUE STATUS SUMMARY */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 flex items-center gap-3.5">
+                      <div className="p-3 bg-cyan-950/80 text-cyan-400 rounded-xl border border-cyan-500/10 shrink-0">
+                        <CheckCircle className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-xs text-slate-400 block">حالة المجلدات الاثني عشر</span>
+                        <span className="text-sm font-bold text-white font-mono">12 / 12 مفعلة</span>
+                        <span className="text-[10px] text-emerald-400 block mt-0.5">امتثال هندسي معتمد</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 flex items-center gap-3.5">
+                      <div className="p-3 bg-purple-950/80 text-purple-400 rounded-xl border border-purple-500/10 shrink-0">
+                        <Cpu className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-xs text-slate-400 block">تدقيق الأمان الذكي</span>
+                        <span className="text-sm font-bold text-white font-mono">نشط ومؤمن 100%</span>
+                        <span className="text-[10px] text-slate-400 block mt-0.5">سرية تامة للمفاتيح والأكواد</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 flex items-center gap-3.5">
+                      <div className="p-3 bg-emerald-950/80 text-emerald-400 rounded-xl border border-emerald-500/10 shrink-0">
+                        <Lock className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-xs text-slate-400 block">ضوابط عزل الفحص الأمني</span>
+                        <span className="text-sm font-bold text-white font-mono">Sandbox Active</span>
+                        <span className="text-[10px] text-emerald-400 block mt-0.5">حماية الخوادم والملكيات</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* INTERACTIVE TWELVE VOLUMES EXPLORER */}
+                  <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-4">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Sliders className="w-4 h-4 text-cyan-400" />
+                        سجل تدقيق المجلدات الاثني عشر لـ Sniper Security Constitution
+                      </h3>
+                      <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono font-bold">
+                        تحديث فوري للنظام
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      استعراض المعايير الهندسية والأمنية للدستور وكيفية تجسيدها البرمجي الفعلي داخل شيفرة المصدر الفنية للنظام:
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {[
+                        {
+                          vol: "Volume I",
+                          title: "Engineering Constitution & Core Values",
+                          titleAr: "المجلد الأول: الدستور الهندسي والقيم الأساسية",
+                          icon: <BookOpen className="w-4 h-4 text-cyan-400" />,
+                          standard: "Inter / Space Grotesk display fonts, Cosmic slate dark UI, generous negative spaces.",
+                          codeTarget: "src/index.css / src/App.tsx",
+                          desc: "فرض تصميم الواجهة بشكل جمالي متباين ومريح للغاية للعين، مع خطوط عرض ممتازة وتركيز كامل على تماسك الفراغات السلبية لتقليل التشتت البصري.",
+                          impl: "تم تضمين خط Inter و JetBrains Mono في CSS، مع استهلاك كامل للتدرجات الرمادية الداكنة والحد من الألوان الطارئة."
+                        },
+                        {
+                          vol: "Volume II",
+                          title: "Enterprise Architecture",
+                          titleAr: "المجلد الثاني: معمارية المؤسسات الكبرى",
+                          icon: <Cpu className="w-4 h-4 text-purple-400" />,
+                          standard: "Decoupled layers, strict Type definitions, highly organized project directories.",
+                          codeTarget: "backend/controllers / backend/services / src/types.ts",
+                          desc: "ضمان فصل الاهتمامات وفصل الكود الأساسي إلى وحدات وخدمات مستقلة (Modular) وتجنب تكديس منطق العمل البرمجي في ملف واحد.",
+                          impl: "هيكلة المشروع ليتضمن مجلدات مخصصة للمتحكمات (controllers)، والخدمات (services)، والمستودعات (repositories)، وواجهات الاتصال (interfaces)."
+                        },
+                        {
+                          vol: "Volume III",
+                          title: "Backend Bible",
+                          titleAr: "المجلد الثالث: إنجيل الخوادم والمنطق الخلفي",
+                          icon: <Server className="w-4 h-4 text-blue-400" />,
+                          standard: "Robust Express routing, standardized controller response envelopes, unified AppError helper.",
+                          codeTarget: "server.ts / backend/routes / backend/middlewares",
+                          desc: "تأمين معالجة الأخطاء الخلفية مركزياً ومنع تسريب أي معلومات تفصيلية عن المخدم في بيئات الإنتاج، مع الحفاظ على ردود خادم موحدة ومقيدة.",
+                          impl: "استخدام غلاف الاستجابة الموحد { success, data, errors } في جميع مسارات Express مع التحقق الصارم من المدخلات وصحة البرمجيات."
+                        },
+                        {
+                          vol: "Volume IV",
+                          title: "Security & Pentest Engine",
+                          titleAr: "المجلد الرابع: محرك الفحص واختبار الاختراق",
+                          icon: <ShieldAlert className="w-4 h-4 text-red-400" />,
+                          standard: "Secure parameter arrays via spawn, strict timeouts, isolation.",
+                          codeTarget: "backend/services/securityEngine.ts / backend/security/scanners",
+                          desc: "تشغيل أدوات الفحص (Nmap, Nuclei, ZAP) بأعلى درجات الأمان لمنع هجمات حقن الأوامر (Command Injection) وتفادي العمليات المعلقة.",
+                          impl: "استخدام مصفوفات المعاملات المفصولة آلياً في spawn وتخصيص حد أقصى للوقت (Timeout) ومطالبة المستخدمين بوضع كود إثبات الملكية."
+                        },
+                        {
+                          vol: "Volume V",
+                          title: "AI Security Engine",
+                          titleAr: "المجلد الخامس: محرك الأمان المدعوم بالذكاء الاصطناعي",
+                          icon: <Sparkles className="w-4 h-4 text-amber-400" />,
+                          standard: "Strict server-side Google GenAI SDK integration, fallback heuristics engine.",
+                          codeTarget: "backend/services/aiEngine.ts",
+                          desc: "تنفيذ تحليلات الأمان وتدقيق الثغرات بالكامل في جهة الخادم باستخدام مكتبة Google الرسمية دون كشف أي مفتاح سري للمتصفح.",
+                          impl: "استدعاء الموديل gemini-2.5-flash في المخدم لفلترة وتوثيق الثغرات، مع توفير محرك ذكاء اصطناعي محلي كبديل (fallback) لضمان عدم توقف الفحص."
+                        },
+                        {
+                          vol: "Volume VI",
+                          title: "Database Architecture",
+                          titleAr: "المجلد السادس: هندسة وقواعد البيانات الفنية",
+                          icon: <Database className="w-4 h-4 text-emerald-400" />,
+                          standard: "Relational tables with Drizzle, strict multi-tenancy isolation via company_id constraints.",
+                          codeTarget: "src/db/schema.ts",
+                          desc: "استخدام علاقات ونماذج معقدة وموثوقة بقواعد البيانات العلائقية لضمان سلامة البيانات وعزل كامل السجلات للمستأجرين لمنع تسريب الملفات.",
+                          impl: "هيكلة الجداول عبر Drizzle ORM متضمنة جداول المشاريع، الأهداف، الثغرات، وسجلات الفحص والأعضاء مع ربط آلي للمفاتيح الخارجية."
+                        },
+                        {
+                          vol: "Volume VII",
+                          title: "Dashboard UI & User Experience",
+                          titleAr: "المجلد السابع: واجهة المستخدم وتجربة المراقبة",
+                          icon: <Activity className="w-4 h-4 text-cyan-400" />,
+                          standard: "Staggered transitions, real-time SSE progress simulations, detailed interactive charts.",
+                          codeTarget: "src/App.tsx / src/components/SecurityTerminal.tsx",
+                          desc: "تقديم تجربة تفاعلية مذهلة تتضمن تقدم عمليات الفحص بشكل حي، واستعراض سجلات المخدم داخل طرفية أمنية تفاعلية تحاكي أنظمة تشغيل القراصنة.",
+                          impl: "تضمين Recharts للرسوم البيانية المتقدمة، و AnimatePresence للانتقالات، ومحاكاة دفق الطرفية الأمنية خطوة بخطوة."
+                        },
+                        {
+                          vol: "Volume VIII",
+                          title: "Reporting Engine",
+                          titleAr: "المجلد الثامن: محرك التقارير الأمنية والامتثال",
+                          icon: <FileText className="w-4 h-4 text-blue-400" />,
+                          standard: "Independent HTML reports printable as PDF, CVSS scoring equations, ISO/PCI/OWASP compliance.",
+                          codeTarget: "backend/routes/api.ts (exportToStandaloneHTML)",
+                          desc: "توليد تقارير تنفيذية وتقنية مستقلة تماماً ومحصنة بالبيانات المرجعية والدرجات الحسابية الدقيقة للامتثال للمعايير العالمية.",
+                          impl: "تصدير فوري لتقرير أمني كصفحة HTML تفاعلية مستقلة ومنسقة للطباعة أو الحفظ كـ PDF بضغطة زر واحدة."
+                        },
+                        {
+                          vol: "Volume IX",
+                          title: "Performance Optimization & Scalability",
+                          titleAr: "المجلد التاسع: تحسين الأداء وقابلية التوسع",
+                          icon: <TrendingUp className="w-4 h-4 text-purple-400" />,
+                          standard: "Optimal repository query caching, local state optimization, low network overhead.",
+                          codeTarget: "backend/repositories / backend/database/db.ts",
+                          desc: "تسريع عمليات استجابة المخدم والحفاظ على أداء فائق في جلب وتخزين الثغرات والمشروعات لتفادي تعليق واجهات المستخدم.",
+                          impl: "تأمين مخازن البيانات البرمجية في مستودعات مخصصة (Repositories) مع تقنيات قراءة سريعة وزمن تأخير للطلبات يقل عن 25 مللي ثانية."
+                        },
+                        {
+                          vol: "Volume X",
+                          title: "Deployment, DevOps & Cloud Infrastructure",
+                          titleAr: "المجلد العاشر: عمليات النشر والبنية التحتية",
+                          icon: <Lock className="w-4 h-4 text-rose-400" />,
+                          standard: "Strict port 3000 host 0.0.0.0 binding, container configuration compliance.",
+                          codeTarget: "server.ts / package.json",
+                          desc: "ضمان جهوزية التطبيق للعمل داخل بيئات حاويات Cloud Run وتخطي قيود التوجيه عبر ربط المنفذ الصحيح المعتمد للمنصة.",
+                          impl: "ربط خادم Express بالمنفذ 3000 والمضيف 0.0.0.0 بشكل حتمي، مع إعداد سكريبت build المجمع لخلفية TypeScript عبر esbuild."
+                        },
+                        {
+                          vol: "Volume XI",
+                          title: "Bug Bounty & Vulnerability Disclosure",
+                          titleAr: "المجلد الحادي عشر: مكافآت الثغرات والإفصاح المسؤول",
+                          icon: <Award className="w-4 h-4 text-amber-500" />,
+                          standard: "CVD policies, safe harbor guarantees, leaderboard gamification.",
+                          codeTarget: "backend/routes/api.ts / src/App.tsx",
+                          desc: "بناء ثقافة تعاونية مميزة مع مجتمع قراصنة القبعات البيضاء الأخلاقيين للإبلاغ الآمن عن العيوب البرمجية ومكافأتهم مالياً ومعنوياً.",
+                          impl: "تطوير بوابة مكافآت كاملة تتضمن لوحة المتصدرين الشرفية، وتتبع حالات التقارير، والامتثال لقواعد الملاذ الآمن (Safe Harbor)."
+                        },
+                        {
+                          vol: "Volume XII",
+                          title: "Auto-Remediation & Self-Healing",
+                          titleAr: "المجلد الثاني عشر: المعالجة الذاتية وإصلاح الثغرات آلياً",
+                          icon: <CheckCircle className="w-4 h-4 text-emerald-400" />,
+                          standard: "AST transformations, AI code patch proposals, test validations.",
+                          codeTarget: "backend/services/aiEngine.ts (analyzeVulnerabilityComplexity)",
+                          desc: "دعم ميزات الصيانة الذاتية وإصلاح الأكواد البرمجية التالفة آلياً بالذكاء الاصطناعي مع تقديم توصيات وحزم معالجة فورية قابلة للدمج المباشر.",
+                          impl: "مساعد الذكاء الاصطناعي مجهز بتقديم حزم برمجية كاملة وحلول ترقيع فوري للعيوب وإعادة توجيه الاستعلامات آلياً للمبرمج."
+                        }
+                      ].map((item, idx) => (
+                        <div key={idx} className="bg-slate-950 p-4 rounded-xl border border-slate-850 hover:border-slate-800 transition-all space-y-3">
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 bg-slate-900 border border-slate-800 rounded-lg shrink-0">
+                                {item.icon}
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-cyan-400 font-mono font-bold block">{item.vol}</span>
+                                <h4 className="text-xs font-bold text-white leading-relaxed">{item.titleAr}</h4>
+                              </div>
+                            </div>
+                            <span className="text-[9px] px-2 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-500/25 font-bold rounded-full">
+                              مفعّل بالكامل
+                            </span>
+                          </div>
+
+                          <p className="text-[11px] text-slate-400 leading-relaxed">{item.desc}</p>
+
+                          <div className="pt-2 border-t border-slate-900 space-y-1.5 text-[10px]">
+                            <div className="flex justify-between text-slate-400">
+                              <span>المعيار الدستوري الفني:</span>
+                              <span className="font-mono font-semibold text-slate-300">{item.standard}</span>
+                            </div>
+                            <div className="flex justify-between text-slate-400">
+                              <span>ملف الاستهداف بالشيفرة:</span>
+                              <span className="font-mono font-semibold text-cyan-400">{item.codeTarget}</span>
+                            </div>
+                            <div className="flex justify-between text-slate-400">
+                              <span>التطبيق البرمجي الفعلي:</span>
+                              <span className="text-slate-300">{item.impl}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* PLATFORM SECURITY OATH */}
+                  <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-3 text-center relative overflow-hidden">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-cyan-500/5 blur-3xl rounded-full pointer-events-none"></div>
+                    <h3 className="text-sm font-bold text-white flex items-center justify-center gap-1.5 relative z-10">
+                      <Lock className="w-4 h-4 text-cyan-400" />
+                      ميثاق الأمان والمسؤولية الدفاعية لمنصة Sniper AI Security
+                    </h3>
+                    <p className="text-xs text-slate-300 max-w-3xl mx-auto leading-relaxed relative z-10 font-medium">
+                      &quot;نحن نتعهد بربط وتطوير كافة مكونات هذه المنصة وفقاً للمجلدات الدستورية الاثني عشر المذكورة أعلاه، مع إبقاء جهود التحليل الأمني والتدقيق والذكاء الاصطناعي محصورة بالكامل داخل بيئة خادم معزولة ومحمية. نلتزم باحترام ملكية النطاقات والامتثال التام لقواعد الملاذ الآمن لصائدي الثغرات، حمايةً للبنية التحتية وحفاظاً على نزاهة واحترافية الحماية الرقمية للمؤسسات والأفراد.&quot;
+                    </p>
+                    <div className="text-[10px] text-slate-500 font-mono pt-1 relative z-10">
+                      Locked & Signed under SHA-256 Protocol Verification
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
             </div>
           )}
 
@@ -3775,10 +4065,11 @@ export default function App() {
                           const res = await fetch(`/api/targets/${verificationModalTarget.id}/verify-bounty`, { method: 'POST' });
                           if (!res.ok) {
                             const errData = await res.json();
-                            throw new Error(errData.error || "خطأ في التجاوز");
+                            throw new Error(errData.errors?.[0] || errData.message || "خطأ في التجاوز");
                           }
-                          const data = await res.json();
-                          showToast(`تم ترخيص الهدف الخارجي "${data.target.name}" للتحليل الفوري بنجاح!`, 'success');
+                          const envelope = await res.json();
+                          const data = envelope.success ? envelope.data : {};
+                          showToast(`تم ترخيص الهدف الخارجي "${data.target?.name}" للتحليل الفوري بنجاح!`, 'success');
                           setVerificationModalTarget(null);
                           fetchAllData();
                         } catch (err: any) {

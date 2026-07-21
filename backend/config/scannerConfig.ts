@@ -1,0 +1,11 @@
+export const SCANNER_CONFIG = {
+  TIMEOUT_MS: 7000,
+  USER_AGENT: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AISecurityAuditor/1.0",
+  SCAN_STAGES_DELAY_MS: {
+    RECON: 1500,
+    DEEP_ANALYSIS: 2000,
+    VERIFICATION: 1500,
+    COMPLETION: 1500
+  },
+  MOCK_MOBILE_STEPS_DELAY_MS: 600
+};
