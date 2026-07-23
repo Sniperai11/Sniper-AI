@@ -97,6 +97,75 @@ graph TD
 | **429 Too Many Requests** | تجاوز معدل الطلب | تجاوز الحد المسموح به من الطلبات في الدقيقة (Rate Limiting). |
 | **500 Internal Error** | خطأ في الخادم | خطأ غير متوقع في الكود أو انقطاع الاتصال بقاعدة البيانات. |
 
+### 3.3 توثيق واجهات APIs بالاعتماد على OpenAPI/Swagger
+
+تعتمد المنصة معيار **OpenAPI 3.0** (المعروف باسم Swagger Specification) لتوثيق جميع واجهات التطبيقات البرمجية بشكل تفاعلي ومقروء للمطورين، بما يضمن دقة مواصفات المخرجات وتوضيح رموز الخطأ:
+
+1. **آلية التوليد والتشغيل (Generation Mechanism):**
+   * يتم توثيق الواجهات كتابةً عبر ترويسات التعليقات لـ JSDoc فوق فئات التحكم (Controllers) مباشرة باستخدام حزمة `swagger-jsdoc` لتوليد مستند المواصفات بصيغة JSON تلقائياً في الخلفية.
+   * يتم تقديم التوثيق التفاعلي للعملاء عبر مسار الخدمة الموحد `/api/docs` باستخدام واجهة مكتبة `swagger-ui-express`.
+
+2. **توثيق رموز الخطأ والاستجابات العكسية:**
+   * يجب أن يوثق كل مسار (Endpoint) جميع الرموز البرمجية المتوقع استلامها (HTTP Status Codes) مع تقديم البنية الموحدة لرسالة الخطأ:
+     ```json
+     {
+       "success": false,
+       "error": {
+         "code": "MISSING_REQUIRED_PARAMETER",
+         "message": "اسم المشروع مطلوب لتنفيذ هذه العملية.",
+         "details": "المعامل 'projectName' مفقود في جسم الطلب الوارد (Request Body)."
+       }
+     }
+     ```
+
+3. **نموذج توثيق قياسي لمواصفات OpenAPI (Spec Example):**
+   * يوضح التوثيق مواصفات البيانات المدخلة والمخرجات المتوقعة في الطلبات:
+     ```yaml
+     /api/scans/start:
+       post:
+         summary: إطلاق فحص أمني جديد على النطاق المستهدف
+         description: يسمح للمستخدم المصرح له بإطلاق فحص أمني فوري لنطاق مستهدف تحت مظلة مشروع محدد.
+         requestBody:
+           required: true
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   projectId:
+                     type: string
+                     format: uuid
+                     example: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+                   targetUrl:
+                     type: string
+                     format: uri
+                     example: "https://example.com"
+         responses:
+           202:
+             description: تم قبول طلب الفحص وتمريره للطابور الخلفي للمعالجة
+             content:
+               application/json:
+                 schema:
+                   type: object
+                   properties:
+                     success:
+                       type: boolean
+                       example: true
+                     data:
+                       type: object
+                       properties:
+                         scanId:
+                           type: string
+                           example: "a8b9c0d1-e2f3-4a5b-6c7d-8e9f0a1b2c3d"
+                         status:
+                           type: string
+                           example: "processing"
+           400:
+             description: تفاصيل طلب غير صالحة أو فشل التحقق الأولي من صحة النطاق
+           403:
+             description: غير مصرح بإطلاق الفحص نتيجة غياب إثبات الملكية أو انتهاء باقة الاشتراك
+     ```
+
 ---
 
 ## 4. التحقق من المدخلات والتصفية الصارمة (Strict Input Validation)

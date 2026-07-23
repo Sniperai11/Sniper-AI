@@ -3,17 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type UserRole = 'Admin' | 'Security Analyst' | 'Viewer';
+export * from './types/index';
+
+export type LegacyUserRole = 'Admin' | 'Security Analyst' | 'Viewer';
 
 export interface TeamMember {
   id: string;
   name: string;
   email: string;
-  role: UserRole;
+  role: LegacyUserRole;
   joinedAt: string;
 }
 
-export type TargetType = 'Website' | 'API' | 'Mobile' | 'Source Code';
+export type SecurityTargetType = 'Website' | 'API' | 'Mobile' | 'Source Code';
 
 export type VerificationStatus = 'Pending' | 'Verified' | 'Failed';
 
@@ -21,7 +23,7 @@ export interface SecurityTarget {
   id: string;
   name: string;
   url: string;
-  type: TargetType;
+  type: SecurityTargetType;
   verificationToken: string;
   verificationStatus: VerificationStatus;
   verifiedAt?: string;
@@ -37,25 +39,25 @@ export interface SecurityProject {
   targets: SecurityTarget[];
 }
 
-export type SeverityLevel = 'Critical' | 'High' | 'Medium' | 'Low';
+export type LegacySeverityLevel = 'Critical' | 'High' | 'Medium' | 'Low';
 
-export interface Vulnerability {
+export interface LegacyVulnerability {
   id: string;
   targetId: string;
   targetName: string;
   title: string;
-  type: string; // e.g., "SQL Injection", "XSS", "Insecure Direct Object Reference"
-  severity: SeverityLevel;
-  cvssScore: number; // 0.0 - 10.0
-  location: string; // e.g., "GET /api/users", "src/auth.ts:24"
+  type: string;
+  severity: LegacySeverityLevel;
+  cvssScore: number;
+  location: string;
   description: string;
   impact: string;
   remediation: string;
   isFalsePositive: boolean;
   complianceMapping: {
-    owasp: string; // e.g., "A01:2021-Broken Access Control"
-    iso27001: string; // e.g., "A.12.6.1 Management of technical vulnerabilities"
-    pciDss: string; // e.g., "Requirement 6.5"
+    owasp: string;
+    iso27001: string;
+    pciDss: string;
   };
 }
 
@@ -65,7 +67,7 @@ export interface ScanJob {
   id: string;
   targetId: string;
   status: ScanStatus;
-  progress: number; // 0 to 100
+  progress: number;
   startedAt?: string;
   completedAt?: string;
   scannerLogs: string[];
@@ -75,16 +77,6 @@ export interface ScanJob {
     Medium: number;
     Low: number;
   };
-}
-
-export interface AuditLog {
-  id: string;
-  userId: string;
-  userEmail: string;
-  action: string;
-  details: string;
-  ipAddress: string;
-  timestamp: string;
 }
 
 export type SaaSPlan = 'Free' | 'Professional' | 'Enterprise';
@@ -104,25 +96,4 @@ export interface SaaSSubscription {
   currentPeriodEnd: string;
   limits: SaaSLimits;
   cost: number;
-}
-
-export interface SecurityReport {
-  id: string;
-  projectId: string;
-  projectName: string;
-  generatedAt: string;
-  riskScore: number;
-  totalVulnerabilities: number;
-  severityBreakdown: {
-    Critical: number;
-    High: number;
-    Medium: number;
-    Low: number;
-  };
-  executiveSummary: string;
-  compliancePercentage: {
-    owasp: number;
-    iso27001: number;
-    pciDss: number;
-  };
 }

@@ -2,11 +2,13 @@ import { Router } from "express";
 import { attachUser, requireAdmin } from "../middleware/auth";
 
 import * as userController from "../controllers/userController";
+import { authController } from "../controllers/authController";
 import * as projectController from "../controllers/projectController";
 import * as scanController from "../controllers/scanController";
 import * as reportController from "../controllers/reportController";
 import * as bountyController from "../controllers/bountyController";
 import * as chatController from "../controllers/chatController";
+import * as remediationController from "../controllers/remediationController";
 
 const router = Router();
 
@@ -14,9 +16,20 @@ const router = Router();
 router.use(attachUser);
 
 /* -------------------------------------------------------------------------- */
+/*                            AUTHENTICATION & SESSIONS                      */
+/* -------------------------------------------------------------------------- */
+router.post("/auth/login", authController.login);
+router.post("/auth/register", authController.register);
+router.post("/auth/logout", authController.logout);
+router.get("/auth/me", authController.getMe);
+router.post("/auth/forgot-password", authController.forgotPassword);
+router.post("/auth/reset-password", authController.resetPassword);
+
+/* -------------------------------------------------------------------------- */
 /*                                USER & TEAM ROUTE MAP                        */
 /* -------------------------------------------------------------------------- */
 router.get("/user/profile", userController.getProfile);
+router.post("/user/switch", userController.switchUser);
 router.post("/team/role", requireAdmin, userController.updateTeamRole);
 router.post("/team/add", requireAdmin, userController.addTeamMember);
 router.delete("/team/:id", requireAdmin, userController.deleteTeamMember);
@@ -64,5 +77,11 @@ router.post("/bugbounty/generate-report", bountyController.aiGenerateBountyDraft
 /*                               AI CHATBOT ADVISOR                           */
 /* -------------------------------------------------------------------------- */
 router.post("/chat", chatController.sendMessageToAdvisor);
+
+/* -------------------------------------------------------------------------- */
+/*                        AUTO REMEDIATION & SELF HEALING MAP                 */
+/* -------------------------------------------------------------------------- */
+router.get("/remediations", remediationController.getRemediations);
+router.post("/vulnerabilities/:id/remediate", requireAdmin, remediationController.performRemediation);
 
 export default router;

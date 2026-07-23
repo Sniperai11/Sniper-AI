@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global safety net - default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions for zero-trust security
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Validation helper for UserSecurityProfile
+    function isValidSecurityProfile(data) {
+      return data.userId is string 
+        && data.userId.size() <= 128
+        && data.email is string
+        && data.email.size() <= 256
+        && data.twoFactorEnabled is bool
+        && (data.twoFactorType == null || (data.twoFactorType is string && (data.twoFactorType == 'totp' || data.twoFactorType == 'sms')))
+        && (data.twoFactorSecret == null || (data.twoFactorSecret is string && data.twoFactorSecret.size() <= 128))
+        && (data.twoFactorPhone == null || (data.twoFactorPhone is string && data.twoFactorPhone.size() <= 32));
+    }
+
+    // Secure user security profiles
+    match /user_security_profiles/{profileId} {
+      allow get: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
+      
+      allow create: if isSignedIn() 
+        && isValidId(profileId)
+        && request.resource.data.userId == request.auth.uid
+        && isValidSecurityProfile(request.resource.data);
+
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && isValidSecurityProfile(request.resource.data)
+        && request.resource.data.email == resource.data.email; // Email is immutable
+
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}

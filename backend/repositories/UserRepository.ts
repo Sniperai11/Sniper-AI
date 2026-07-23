@@ -5,8 +5,28 @@ import { IAuditLog } from "../types/database";
 import { eq, desc } from "drizzle-orm";
 
 export class UserRepository {
+  private static activeUserId: string = "tm-1";
+
+  public static setActiveUserId(userId: string) {
+    UserRepository.activeUserId = userId;
+  }
+
+  public static getActiveUserId(): string {
+    return UserRepository.activeUserId;
+  }
+
   public async getCurrentUser(): Promise<IUser> {
-    // Return the default admin user as standard
+    const found = await db.select().from(schema.teamMembers).where(eq(schema.teamMembers.id, UserRepository.activeUserId)).limit(1);
+    if (found.length > 0) {
+      return {
+        id: found[0].id,
+        name: found[0].name,
+        email: found[0].email,
+        role: found[0].role as any,
+        joinedAt: found[0].joinedAt ? found[0].joinedAt.toISOString() : undefined,
+      };
+    }
+    // Default admin user fallback
     return {
       id: "tm-1",
       name: "إبراهيم العتيبي",
@@ -17,6 +37,14 @@ export class UserRepository {
   }
 
   public async getCompany(): Promise<any> {
+    const comp = await db.select().from(schema.companies).limit(1);
+    if (comp.length > 0) {
+      return {
+        name: comp[0].name,
+        ownerEmail: comp[0].ownerEmail,
+        joinedAt: comp[0].joinedAt ? comp[0].joinedAt.toISOString() : null,
+      };
+    }
     return {
       name: "شركة التقنية للحلول الرقمية (DigitalTech Solutions)",
       ownerEmail: "owner@digitaltech.sa",

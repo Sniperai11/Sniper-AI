@@ -4,6 +4,22 @@
 @theme {
   --font-sans: "Cairo", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  /* Cosmic Dark Slate Tokens */
+  --color-cosmic-950: #050811;
+  --color-cosmic-900: #090d16;
+  --color-cosmic-850: #101625;
+  --color-cosmic-800: #172134;
+  --color-cosmic-700: #23314d;
+  --color-cosmic-600: #304368;
+  --color-cosmic-500: #425984;
+  
+  /* Semantic Enterprise Security Colors */
+  --color-brand-primary: #10b981;
+  --color-brand-secondary: #06b6d4;
+  --color-brand-danger: #ef4444;
+  --color-brand-warning: #f59e0b;
+  --color-brand-info: #3b82f6;
 }
 
 body {

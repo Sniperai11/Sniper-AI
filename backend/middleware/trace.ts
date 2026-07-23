@@ -8,6 +8,16 @@ export interface TracedRequest extends Request {
 }
 
 export function traceMiddleware(req: TracedRequest, res: Response, next: NextFunction) {
+  // Skip tracing for internal Vite static assets and code files to avoid logging file paths
+  if (
+    req.originalUrl.startsWith("/src/") ||
+    req.originalUrl.startsWith("/@") ||
+    req.originalUrl.startsWith("/node_modules") ||
+    /\.(tsx?|jsx?|css|less|scss|json|ico|svg|png|jpe?g|webp|woff2?|map)$/i.test(req.path)
+  ) {
+    return next();
+  }
+
   const reqId = (req.headers["x-request-id"] as string) || `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   req.id = reqId;
   req.startTime = performance.now();

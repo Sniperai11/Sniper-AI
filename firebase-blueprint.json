@@ -1,0 +1,52 @@
+{
+  "entities": {
+    "UserSecurityProfile": {
+      "title": "User Security Profile",
+      "description": "Stores user security configurations including 2FA status and details",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The unique user ID"
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address"
+        },
+        "twoFactorEnabled": {
+          "type": "boolean",
+          "description": "Whether multi-factor authentication is enabled"
+        },
+        "twoFactorSecret": {
+          "type": "string",
+          "description": "The secret key used for TOTP 2FA"
+        },
+        "twoFactorPhone": {
+          "type": "string",
+          "description": "The verified phone number for SMS 2FA"
+        },
+        "twoFactorType": {
+          "type": "string",
+          "description": "The type of 2FA enabled: 'totp' or 'sms'"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the last security update"
+        }
+      },
+      "required": [
+        "userId",
+        "email",
+        "twoFactorEnabled",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "user_security_profiles/{profileId}": {
+      "schema": "UserSecurityProfile",
+      "description": "User multi-factor authentication and security configuration collection"
+    }
+  }
+}

@@ -15,12 +15,22 @@ async function main() {
   const rawData = fs.readFileSync(dbFilePath, "utf8");
   const data = JSON.parse(rawData);
 
+  // 0. Default Company
+  console.log("[Seed] Inserting default company (comp-1)...");
+  await db.insert(schema.companies).values({
+    id: "comp-1",
+    name: "شركة التقنية للحلول الرقمية (DigitalTech Solutions)",
+    ownerEmail: "owner@digitaltech.sa",
+    joinedAt: new Date("2026-01-10T12:00:00Z"),
+  }).onConflictDoNothing();
+
   // 1. Team Members
   if (data.teamMembers && data.teamMembers.length > 0) {
     console.log(`[Seed] Inserting ${data.teamMembers.length} team members...`);
     for (const member of data.teamMembers) {
       await db.insert(schema.teamMembers).values({
         id: member.id,
+        companyId: "comp-1",
         name: member.name,
         email: member.email,
         role: member.role,
@@ -33,6 +43,7 @@ async function main() {
   if (data.subscription) {
     console.log("[Seed] Inserting subscription settings...");
     await db.insert(schema.subscription).values({
+      companyId: "comp-1",
       plan: data.subscription.plan,
       status: data.subscription.status,
       currentPeriodEnd: data.subscription.currentPeriodEnd ? new Date(data.subscription.currentPeriodEnd) : null,
@@ -47,6 +58,7 @@ async function main() {
     for (const log of data.auditLogs) {
       await db.insert(schema.auditLogs).values({
         id: log.id,
+        companyId: "comp-1",
         userId: log.userId,
         userEmail: log.userEmail,
         action: log.action,
@@ -64,6 +76,7 @@ async function main() {
       // Insert project
       await db.insert(schema.projects).values({
         id: project.id,
+        companyId: "comp-1",
         name: project.name,
         description: project.description,
         createdAt: project.createdAt ? new Date(project.createdAt) : new Date(),

@@ -1,6 +1,13 @@
 import { pgTable, serial, text, timestamp, integer, boolean, real, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
+export const companies = pgTable("companies", {
+  id: text("id").primaryKey(), // UUID or comp-1
+  name: text("name").notNull(),
+  ownerEmail: text("owner_email").notNull().unique(),
+  joinedAt: timestamp("joined_at").defaultNow(),
+});
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   uid: text("uid").notNull().unique(), // Firebase Auth UID
@@ -12,6 +19,7 @@ export const users = pgTable("users", {
 
 export const teamMembers = pgTable("team_members", {
   id: text("id").primaryKey(), // tm-1, tm-2...
+  companyId: text("company_id").references(() => companies.id, { onDelete: "cascade" }).default("comp-1"),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   role: text("role").notNull(),
@@ -20,6 +28,7 @@ export const teamMembers = pgTable("team_members", {
 
 export const subscription = pgTable("subscription", {
   id: serial("id").primaryKey(),
+  companyId: text("company_id").references(() => companies.id, { onDelete: "cascade" }).default("comp-1"),
   plan: text("plan").notNull(),
   status: text("status").notNull(),
   currentPeriodEnd: timestamp("current_period_end"),
@@ -29,6 +38,7 @@ export const subscription = pgTable("subscription", {
 
 export const auditLogs = pgTable("audit_logs", {
   id: text("id").primaryKey(),
+  companyId: text("company_id").references(() => companies.id, { onDelete: "cascade" }).default("comp-1"),
   userId: text("user_id"),
   userEmail: text("user_email").notNull(),
   action: text("action").notNull(),
@@ -39,6 +49,7 @@ export const auditLogs = pgTable("audit_logs", {
 
 export const projects = pgTable("projects", {
   id: text("id").primaryKey(),
+  companyId: text("company_id").references(() => companies.id, { onDelete: "cascade" }).default("comp-1"),
   name: text("name").notNull(),
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -131,10 +142,23 @@ export const activeScans = pgTable("active_scans", {
   vulnerabilitiesFoundCount: jsonb("vulnerabilities_found_count").notNull(), // json breakdown
 });
 
+export const remediations = pgTable("remediations", {
+  id: text("id").primaryKey(), // pat-xxxx
+  projectId: text("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  vulnerabilityId: text("vulnerability_id").references(() => vulnerabilities.id, { onDelete: "cascade" }),
+  originalCodeSnippet: text("original_code_snippet").notNull(),
+  patchedCodeSnippet: text("patched_code_snippet").notNull(),
+  validationStatus: text("validation_status").notNull(), // Passed, Failed, Untested
+  validationLogs: text("validation_logs").notNull(),
+  pullRequestUrl: text("pull_request_url"),
+  generatedAt: timestamp("generated_at").defaultNow(),
+});
+
 // Relationships
 export const projectsRelations = relations(projects, ({ many }) => ({
   targets: many(targets),
   reports: many(reportsHistory),
+  remediations: many(remediations),
 }));
 
 export const targetsRelations = relations(targets, ({ one, many }) => ({
@@ -145,9 +169,21 @@ export const targetsRelations = relations(targets, ({ one, many }) => ({
   vulnerabilities: many(vulnerabilities),
 }));
 
-export const vulnerabilitiesRelations = relations(vulnerabilities, ({ one }) => ({
+export const vulnerabilitiesRelations = relations(vulnerabilities, ({ one, many }) => ({
   target: one(targets, {
     fields: [vulnerabilities.targetId],
     references: [targets.id],
+  }),
+  remediations: many(remediations),
+}));
+
+export const remediationsRelations = relations(remediations, ({ one }) => ({
+  project: one(projects, {
+    fields: [remediations.projectId],
+    references: [projects.id],
+  }),
+  vulnerability: one(vulnerabilities, {
+    fields: [remediations.vulnerabilityId],
+    references: [vulnerabilities.id],
   }),
 }));

@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from "../middleware/auth";
 import { userService, UserService } from "../services/UserService";
 import { Formatter } from "../utils/formatter";
 import { Validators } from "../utils/validators";
+import { UserRepository, userRepository } from "../repositories/UserRepository";
 
 export class UserController {
   private userService: UserService;
@@ -114,6 +115,33 @@ export class UserController {
       return res.status(status).json(Formatter.error(error.message));
     }
   };
+
+  /**
+   * 8. Switch the active session user
+   */
+  public switchUser = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { userId } = req.body;
+      Validators.requireFields(req.body, ["userId"]);
+
+      UserRepository.setActiveUserId(userId);
+      const data = await this.userService.getProfile();
+
+      await userRepository.addAuditLog({
+        id: `log-${Date.now()}`,
+        userId: userId,
+        userEmail: data.user.email,
+        action: "تغيير جلسة المستخدم",
+        details: `تم تبديل الجلسة النشطة بنجاح إلى المستخدم: ${data.user.name} (${data.user.role})`,
+        ipAddress: "127.0.0.1",
+        timestamp: new Date().toISOString()
+      });
+
+      return res.json(Formatter.success(data, `تم تغيير المستخدم النشط للجلسة بنجاح إلى: ${data.user.name}`));
+    } catch (error: any) {
+      return res.status(400).json(Formatter.error(error.message));
+    }
+  };
 }
 
 export const userController = new UserController();
@@ -126,3 +154,4 @@ export const deleteTeamMember = userController.deleteTeamMember;
 export const getAuditLogs = userController.getAuditLogs;
 export const clearAuditLogs = userController.clearAuditLogs;
 export const upgradeSubscription = userController.upgradeSubscription;
+export const switchUser = userController.switchUser;

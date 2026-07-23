@@ -1,0 +1,397 @@
+{
+  "teamMembers": [
+    {
+      "id": "tm-1",
+      "name": "إبراهيم العتيبي",
+      "email": "elhammoh2795@gmail.com",
+      "role": "Admin",
+      "joinedAt": "2026-01-10T12:00:00Z"
+    },
+    {
+      "id": "tm-2",
+      "name": "أحمد الشمري",
+      "email": "ahmed.security@digitaltech.sa",
+      "role": "Security Analyst",
+      "joinedAt": "2026-02-15T09:30:00Z"
+    },
+    {
+      "id": "tm-3",
+      "name": "سارة القحطاني",
+      "email": "sara.viewer@digitaltech.sa",
+      "role": "Viewer",
+      "joinedAt": "2026-04-01T14:15:00Z"
+    }
+  ],
+  "subscription": {
+    "plan": "Professional",
+    "status": "active",
+    "currentPeriodEnd": "2026-08-18T09:30:00Z",
+    "limits": {
+      "maxProjects": 10,
+      "maxTargetsPerProject": 5,
+      "scansPerMonth": 50,
+      "scansRemainingThisMonth": 34,
+      "aiConsultationsPerMonth": 200,
+      "aiConsultationsRemaining": 167
+    },
+    "cost": 149
+  },
+  "auditLogs": [
+    {
+      "id": "log-1",
+      "userId": "tm-1",
+      "userEmail": "elhammoh2795@gmail.com",
+      "action": "تسجيل الدخول",
+      "details": "تم تسجيل الدخول إلى المنصة بنجاح عبر بريد elhammoh2795@gmail.com",
+      "ipAddress": "192.168.1.55",
+      "timestamp": "2026-07-18T08:12:00Z"
+    },
+    {
+      "id": "log-2",
+      "userId": "tm-1",
+      "userEmail": "elhammoh2795@gmail.com",
+      "action": "إضافة هدف أمني",
+      "details": "إضافة النطاق dev.api.digitaltech.sa للتحقق والتحليل",
+      "ipAddress": "192.168.1.55",
+      "timestamp": "2026-07-18T08:45:00Z"
+    },
+    {
+      "id": "log-3",
+      "userId": "tm-2",
+      "userEmail": "ahmed.security@digitaltech.sa",
+      "action": "التحقق من الملكية",
+      "details": "تم إكمال التحقق من ملكية الموقع الرئيسي بنجاح (رمز DNS)",
+      "ipAddress": "192.168.1.59",
+      "timestamp": "2026-07-18T09:05:00Z"
+    }
+  ],
+  "projects": [
+    {
+      "id": "proj-1",
+      "name": "مشروع بوابة العملاء والواجهات البرمجية",
+      "description": "البنية التحتية الرئيسية لخدمات عملاء شركة DigitalTech وتطبيقات الدفع المرافقة لها.",
+      "createdAt": "2026-03-01T10:00:00Z",
+      "targets": [
+        {
+          "id": "tar-1",
+          "name": "البوابة الرئيسية للعملاء",
+          "url": "https://portal.digitaltech.sa",
+          "type": "Website",
+          "verificationToken": "ai-sec-audit-hash-88c9f0e1b2",
+          "verificationStatus": "Verified",
+          "verifiedAt": "2026-03-02T11:00:00Z",
+          "lastScanAt": "2026-07-15T14:30:00Z",
+          "currentRiskScore": 34
+        },
+        {
+          "id": "tar-2",
+          "name": "واجهة الخدمات المالية",
+          "url": "https://api.digitaltech.sa/v2/payments",
+          "type": "API",
+          "verificationToken": "ai-sec-audit-hash-fa44923e8c",
+          "verificationStatus": "Verified",
+          "verifiedAt": "2026-03-03T09:15:00Z",
+          "lastScanAt": "2026-07-17T18:00:00Z",
+          "currentRiskScore": 82
+        },
+        {
+          "id": "tar-3",
+          "name": "تطبيق المحفظة الرقمية",
+          "url": "https://play.google.com/store/apps/details?id=sa.digitaltech.wallet",
+          "type": "Mobile",
+          "verificationToken": "ai-sec-audit-hash-01ddbc8f42",
+          "verificationStatus": "Pending",
+          "verificationStatusDetails": "يرجى رفع ملف التحقق ai-security-verification.txt إلى المسار الرئيسي للموقع أو إثبات ملكية المتجر."
+        }
+      ]
+    },
+    {
+      "id": "proj-2",
+      "name": "نظام التوريد الداخلي (ERP)",
+      "description": "فحص أمني داخلي للمستودعات وواجهات التبادل مع الموردين الخارجيين.",
+      "createdAt": "2026-05-12T08:00:00Z",
+      "targets": [
+        {
+          "id": "tar-4",
+          "name": "الشيفرة المصدرية لنظام ERP",
+          "url": "git@github.com:digitaltech-sa/erp-backend.git",
+          "type": "Source Code",
+          "verificationToken": "ai-sec-audit-hash-990a1f2b3c",
+          "verificationStatus": "Verified",
+          "verifiedAt": "2026-05-13T10:20:00Z",
+          "lastScanAt": "2026-06-20T16:00:00Z",
+          "currentRiskScore": 12
+        }
+      ]
+    }
+  ],
+  "vulnerabilities": [
+    {
+      "id": "vuln-1",
+      "targetId": "tar-2",
+      "targetName": "واجهة الخدمات المالية (API)",
+      "title": "حقن لغة الاستعلامات البنائية SQL (SQL Injection) في حقل المستفيد",
+      "type": "SQL Injection",
+      "severity": "Critical",
+      "cvssScore": 9.8,
+      "location": "POST /v2/payments - Parameter: recipient_id",
+      "description": "تسمح المعلمة المستلمة بإدخال تعبيرات SQL برمجية دون تنظيف كافٍ للمدخلات. نجح الفاحص في استرجاع أسماء الجداول وقراءة تفاصيل الحسابات السرية لعملاء آخرين عن طريق إدخال قيم مثل ' UNION SELECT password, email FROM users--.",
+      "impact": "تمكين المهاجم من تخطي نظام المصادقة بالكامل، قراءة وتعديل وحذف البيانات المالية لجميع العملاء، والسيطرة الكاملة على قاعدة بيانات المدفوعات.",
+      "remediation": "استخدام الاستعلامات المعلمية (Parameterized Queries) أو الـ ORM في بناء استعلامات قاعدة البيانات وتجنب دمج المدخلات نصياً بأي حال. كذلك تفعيل طبقة تعقيم إضافية.",
+      "isFalsePositive": false,
+      "complianceMapping": {
+        "owasp": "A03:2021-Injection",
+        "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+        "pciDss": "Requirement 6.5.1"
+      }
+    },
+    {
+      "id": "vuln-2",
+      "targetId": "tar-2",
+      "targetName": "واجهة الخدمات المالية (API)",
+      "title": "انكشاف المفتاح السري للاختبار في الاستجابة (Sensitive Data Exposure)",
+      "type": "Sensitive Data Exposure",
+      "severity": "High",
+      "cvssScore": 7.5,
+      "location": "GET /v2/payments/config - Response Object",
+      "description": "تقوم واجهة Config بإرجاع كائن يحتوي على مفاتيح API لبيئة تجريبية ومفاتيح JWT السريّة الخاصة بالنطاق الداخلي بشكل غير مقصود للمستخدمين غير المصرح لهم.",
+      "impact": "يمكن استخدام المفاتيح السريّة المكشوفة في توقيع صلاحيات زائفة كمدير للنظام أو إجراء دفعات مالية وهمية في البيئة الإنتاجية.",
+      "remediation": "إزالة كتل التكوين الحساسة من استجابة الـ API واستخدام متغيرات البيئة الآمنة وتدريب المهندسين على تصفية كتل الاستجابة.",
+      "isFalsePositive": false,
+      "complianceMapping": {
+        "owasp": "A02:2021-Cryptographic Failures",
+        "iso27001": "A.14.1.2 تأمين الخدمات على الشبكات العامة",
+        "pciDss": "Requirement 4.1"
+      }
+    },
+    {
+      "id": "vuln-3",
+      "targetId": "tar-1",
+      "targetName": "البوابة الرئيسية للعملاء",
+      "title": "ثغرة البرمجة العابرة للمواقع (Stored XSS) في حقل الاسم المستعار",
+      "type": "Stored XSS",
+      "severity": "Medium",
+      "cvssScore": 6.1,
+      "location": "POST /api/user/profile - Parameter: nickname",
+      "description": "يتم حفظ اسم العميل المستعار دون تشفير وسوم HTML أو JavaScript، ليتم عرضه لاحقاً في لوحة التحكم الإدارية لشركة الدعم الفني مما يؤدي لتنفيذ التعليمات فور تحميل الصفحة.",
+      "impact": "سرقة ملفات تعريف الارتباط (Session Cookies) للموظفين والإداريين والسيطرة على جلسات العمل الخاصة بهم بمجرد تصفحهم لملف العميل المتأثر.",
+      "remediation": "تعقيم جميع المدخلات باستخدام مكتبات مخصصة مثل DOMPurify وتأمين تشفير المخرجات (Output Encoding) قبل رندرتها في المتصفح.",
+      "isFalsePositive": false,
+      "complianceMapping": {
+        "owasp": "A03:2021-Injection",
+        "iso27001": "A.14.2.5 مبادئ هندسة النظم الآمنة",
+        "pciDss": "Requirement 6.5.7"
+      }
+    },
+    {
+      "id": "vuln-4",
+      "targetId": "tar-1",
+      "targetName": "البوابة الرئيسية للعملاء",
+      "title": "انكشاف معلومات الخادم والمكتبة المستعملة (Server Header Disclosure)",
+      "type": "Information Disclosure",
+      "severity": "Low",
+      "cvssScore": 3.2,
+      "location": "HTTP Response Header: Server, X-Powered-By",
+      "description": "يعود الخادم بالترويسة Server: Apache/2.4.41 (Ubuntu) والترويسة X-Powered-By: PHP/7.4.3، مما يساعد المهاجمين على استهداف إصدارات النظام المحددة مباشرة.",
+      "impact": "تسهيل مهمة الاستطلاع وجمع المعلومات للمهاجم لاكتشاف الثغرات الجاهزة لهذا الإصدار.",
+      "remediation": "تعديل إعدادات خادم الويب (Apache/Nginx) لإخفاء معلومات ترويسات الاستجابة وإيقاف إرسال تفاصيل الخادم.",
+      "isFalsePositive": false,
+      "complianceMapping": {
+        "owasp": "A05:2021-Security Misconfiguration",
+        "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+        "pciDss": "Requirement 6.5.8"
+      }
+    }
+  ],
+  "reportsHistory": [
+    {
+      "id": "rep-1",
+      "projectId": "proj-1",
+      "projectName": "مشروع بوابة العملاء والواجهات البرمجية",
+      "generatedAt": "2026-07-10T11:00:00Z",
+      "riskScore": 42,
+      "totalVulnerabilities": 3,
+      "severityBreakdown": {
+        "Critical": 0,
+        "High": 1,
+        "Medium": 1,
+        "Low": 1
+      },
+      "executiveSummary": "أظهر فحص مشروع بوابة العملاء في 10 يوليو مستوى أمان متوسط ومقبول نسبياً مع وجود ثغرة واحدة عالية الخطورة بحاجة إلى معالجة سريعة وهي تسريب المفتاح التجريبي config. نوصي بتفعيل طبقة حماية WAF ومراجعة دورية للمدخلات.",
+      "compliancePercentage": {
+        "owasp": 85,
+        "pciDss": 90,
+        "iso27001": 88
+      },
+      "vulnerabilities": [
+        {
+          "id": "vuln-2",
+          "targetId": "tar-2",
+          "targetName": "واجهة الخدمات المالية (API)",
+          "title": "انكشاف المفتاح السري للاختبار في الاستجابة (Sensitive Data Exposure)",
+          "type": "Sensitive Data Exposure",
+          "severity": "High",
+          "cvssScore": 7.5,
+          "location": "GET /v2/payments/config - Response Object",
+          "description": "تقوم واجهة Config بإرجاع كائن يحتوي على مفاتيح API لبيئة تجريبية ومفاتيح JWT السريّة الخاصة بالنطاق الداخلي بشكل غير مقصود للمستخدمين غير المصرح لهم.",
+          "impact": "يمكن استخدام المفاتيح السريّة المكشوفة في توقيع صلاحيات زائفة كمدير للنظام أو إجراء دفعات مالية وهمية في البيئة الإنتاجية.",
+          "remediation": "إزالة كتل التكوين الحساسة من استجابة الـ API واستخدام متغيرات البيئة الآمنة وتدريب المهندسين على تصفية كتل الاستجابة.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A02:2021-Cryptographic Failures",
+            "iso27001": "A.14.1.2 تأمين الخدمات على الشبكات العامة",
+            "pciDss": "Requirement 4.1"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rep-2",
+      "projectId": "proj-2",
+      "projectName": "نظام التوريد الداخلي (ERP)",
+      "generatedAt": "2026-06-20T16:30:00Z",
+      "riskScore": 12,
+      "totalVulnerabilities": 1,
+      "severityBreakdown": {
+        "Critical": 0,
+        "High": 0,
+        "Medium": 0,
+        "Low": 1
+      },
+      "executiveSummary": "نظام التوريد الداخلي يتمتع بمستوى أمان ممتاز ومطابقة عالية لضوابط الأمن السيبراني. لم يرصد الفاحص سوى مشكلة واحدة منخفضة الخطورة تتعلق بترويسات الخادم المستعمل. يوصى بتحديث دوري للمكتبات البرمجية.",
+      "compliancePercentage": {
+        "owasp": 98,
+        "pciDss": 100,
+        "iso27001": 95
+      },
+      "vulnerabilities": [
+        {
+          "id": "vuln-4",
+          "targetId": "tar-1",
+          "targetName": "البوابة الرئيسية للعملاء",
+          "title": "انكشاف معلومات الخادم والمكتبة المستعملة (Server Header Disclosure)",
+          "type": "Information Disclosure",
+          "severity": "Low",
+          "cvssScore": 3.2,
+          "location": "HTTP Response Header: Server, X-Powered-By",
+          "description": "يعود الخادم بالترويسة Server: Apache/2.4.41 (Ubuntu) والترويسة X-Powered-By: PHP/7.4.3، مما يساعد المهاجمين على استهداف إصدارات النظام المحددة مباشرة.",
+          "impact": "تسهيل مهمة الاستطلاع وجمع المعلومات للمهاجم لاكتشاف الثغرات الجاهزة لهذا الإصدار.",
+          "remediation": "تعديل إعدادات خادم الويب (Apache/Nginx) لإخفاء معلومات ترويسات الاستجابة وإيقاف إرسال تفاصيل الخادم.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5.8"
+          }
+        }
+      ]
+    }
+  ],
+  "bugBountyPrograms": [
+    {
+      "id": "bb-1",
+      "targetName": "البوابة الرئيسية للعملاء (portal.digitaltech.sa)",
+      "rewardRange": "$150 - $2,500",
+      "status": "Active",
+      "severityMultiplier": "1.0x",
+      "totalReports": 14,
+      "scope": "يشمل ثغرات XSS, CSRF, IDOR, SQLi, Authenticated bypass. يجب أن يكون الفحص على خادم الاختبار فقط.",
+      "outOfScope": "هجمات DDoS, الهندسة الاجتماعية, تعطيل الخدمة عن عمد."
+    },
+    {
+      "id": "bb-2",
+      "targetName": "واجهة الخدمات المالية (api.digitaltech.sa/v2/payments)",
+      "rewardRange": "$500 - $8,000",
+      "status": "Active",
+      "severityMultiplier": "2.0x",
+      "totalReports": 28,
+      "scope": "العمليات المالية الحساسة، ثغرات تخطي الحماية المالية، تحويل أرصدة دون تغطية، حقن البيانات والوسائط.",
+      "outOfScope": "أي هجوم يعطل معالجة الدفع الفعلية أو يؤثر على بطاقات مستخدمين حقيقيين."
+    },
+    {
+      "id": "bb-3",
+      "targetName": "تطبيق المحفظة الرقمية (sa.digitaltech.wallet)",
+      "rewardRange": "$200 - $4,000",
+      "status": "Active",
+      "severityMultiplier": "1.5x",
+      "totalReports": 6,
+      "scope": "تسريب البيانات المحلية، تخطي رمز المرور، استغلال التخزين غير الآمن، تخطي فحص كسر الحماية (Jailbreak/Root detection).",
+      "outOfScope": "التطبيقات المحملة من خارج المتجر الرسمي أو الهندسة الاجتماعية للمشتركين."
+    }
+  ],
+  "bugBountyLeaderboard": [
+    {
+      "rank": 1,
+      "name": "عبدالله الشمري (Saudihack)",
+      "points": 4200,
+      "totalEarned": "$12,400",
+      "badges": [
+        "أول الغيث",
+        "قناص الثغرات"
+      ]
+    },
+    {
+      "rank": 2,
+      "name": "مازن العتيبي (ZeroDay_Hunter)",
+      "points": 3150,
+      "totalEarned": "$8,900",
+      "badges": [
+        "خبير الثغرات",
+        "تخطي الحماية"
+      ]
+    },
+    {
+      "rank": 3,
+      "name": "سارة المالكي (Security_Princess)",
+      "points": 2800,
+      "totalEarned": "$7,500",
+      "badges": [
+        "مكتشف الذكاء"
+      ]
+    },
+    {
+      "rank": 4,
+      "name": "فيصل الحربي (Faisal_X)",
+      "points": 1950,
+      "totalEarned": "$4,200",
+      "badges": [
+        "صائد نشط"
+      ]
+    },
+    {
+      "rank": 5,
+      "name": "نواف الدوسري (NawafSec)",
+      "points": 1200,
+      "totalEarned": "$2,500",
+      "badges": [
+        "هاكر أخلاقي"
+      ]
+    }
+  ],
+  "bugBountySubmissions": [
+    {
+      "id": "sub-1",
+      "targetName": "البوابة الرئيسية للعملاء (portal.digitaltech.sa)",
+      "title": "تخطي التحقق الثنائي عبر التلاعب بالـ Parameter في الجلسة",
+      "severity": "High",
+      "status": "Rewarded",
+      "rewardAmount": "$1,800",
+      "submittedBy": "elhammoh2795@gmail.com",
+      "submittedAt": "2026-07-10T14:22:00Z",
+      "description": "تم رصد تخطي للتحقق الثنائي عن طريق تغيير المعلمة 'step' في استجابة الجلسة من 'otp' إلى 'dashboard_main' قبل وصولها للمتصفح.",
+      "poc": "1. افتح صفحة تسجيل الدخول\n2. أدخل بريدك وكلمة المرور\n3. في صفحة الرمز الثنائي قم باعتراض الاستجابة وتعديل step=otp إلى step=success."
+    },
+    {
+      "id": "sub-2",
+      "targetName": "واجهة الخدمات المالية (api.digitaltech.sa/v2/payments)",
+      "title": "قراءة ملفات النظام الداخلية عبر ثغرة XXE",
+      "severity": "Critical",
+      "status": "Under Review",
+      "rewardAmount": "$0 (قيد المراجعة)",
+      "submittedBy": "elhammoh2795@gmail.com",
+      "submittedAt": "2026-07-16T11:05:00Z",
+      "description": "واجهة الـ XML المدمجة لا تقوم بإيقاف الكيانات الخارجية، مما يمكن المهاجم من تضمين ملفات داخلية كـ /etc/passwd.",
+      "poc": "POST /api/xml-endpoint HTTP/1.1\n\n<!DOCTYPE foo [<!ENTITY xxe SYSTEM 'file:///etc/passwd'>]>\n<user>&xxe;</user>"
+    }
+  ]
+}

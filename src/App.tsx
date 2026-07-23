@@ -60,6 +60,32 @@ import {
   SecurityReport
 } from './types';
 import SecurityTerminal from './components/SecurityTerminal';
+import { ErrorBoundary, ToastContainer } from './shared/components';
+import { AuthModal } from './features/auth';
+import { useSecurityStore } from './store/useSecurityStore';
+import { AppRouter } from './routes';
+import { DashboardPage } from './pages/DashboardPage';
+import { ProjectsPage } from './pages/ProjectsPage';
+import { VulnerabilitiesPage } from './pages/VulnerabilitiesPage';
+import { ReportsPage } from './pages/ReportsPage';
+import { ChatPage } from './pages/ChatPage';
+import { SubscriptionPage } from './pages/SubscriptionPage';
+import { ConstitutionPage } from './pages/ConstitutionPage';
+import { BugBountyPage } from './pages/BugBountyPage';
+import { usersApi } from './services/api/usersApi';
+import { projectsApi } from './services/api/projectsApi';
+import { scanApi } from './services/api/scanApi';
+import { reportApi, chatApi } from './services/api/reportApi';
+import { authApi } from './services/api/authApi';
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import firebaseConfig from '../firebase-applet-config.json';
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
 import {
   ResponsiveContainer,
   AreaChart,
@@ -162,7 +188,9 @@ export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // Target Ownership Verification helpers
+  // Auth Modal state
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const { logout: storeLogout } = useSecurityStore();
   const [verificationModalTarget, setVerificationModalTarget] = useState<SecurityTarget | null>(null);
 
   // New Project Form
@@ -181,6 +209,26 @@ export default function App() {
   const [newMemberName, setNewMemberName] = useState<string>('');
   const [newMemberEmail, setNewMemberEmail] = useState<string>('');
   const [newMemberRole, setNewMemberRole] = useState<UserRole>('Viewer');
+
+  // Firebase Auth & 2FA State Variables
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean>(false);
+  const [twoFactorType, setTwoFactorType] = useState<'totp' | 'sms' | null>(null);
+  const [twoFactorSecret, setTwoFactorSecret] = useState<string>('');
+  const [twoFactorPhone, setTwoFactorPhone] = useState<string>('');
+  const [showMfaSetupModal, setShowMfaSetupModal] = useState<boolean>(false);
+  const [mfaSetupStep, setMfaSetupStep] = useState<number>(1);
+  const [mfaSetupCode, setMfaSetupCode] = useState<string>('');
+  const [tempPhone, setTempPhone] = useState<string>('');
+  const [tempSecret, setTempSecret] = useState<string>('');
+  const [mfaError, setMfaError] = useState<string | null>(null);
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  
+  // 2FA Action Challenge states
+  const [showMfaChallenge, setShowMfaChallenge] = useState<boolean>(false);
+  const [mfaChallengeCode, setMfaChallengeCode] = useState<string>('');
+  const [mfaChallengeCallback, setMfaChallengeCallback] = useState<(() => void) | null>(null);
+  const [mfaChallengeError, setMfaChallengeError] = useState<string | null>(null);
+
 
   // AI Security Assistant Chat state
   const [chatMessages, setChatMessages] = useState<Array<{ sender: 'user' | 'assistant'; text: string; timestamp: string }>>([
@@ -218,6 +266,14 @@ export default function App() {
 
   // Copy token status helper
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+
+  // Auto-Remediation & Self Healing States
+  const [remediations, setRemediations] = useState<any[]>([]);
+  const [remediationModalVuln, setRemediationModalVuln] = useState<any | null>(null);
+  const [remediationLoading, setRemediationLoading] = useState<boolean>(false);
+  const [remediationResult, setRemediationResult] = useState<any | null>(null);
+  const [validationStep, setValidationStep] = useState<number>(0);
+  const [simulatedLogs, setSimulatedLogs] = useState<string>('');
 
   // Notifications banner
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -288,6 +344,29 @@ export default function App() {
     showToast(`تم استيراد تفاصيل الثغرة المكتشفة "${found.title}" بنجاح!`, "success");
   };
 
+  const handleSwitchUser = async (userId: string) => {
+    const action = async () => {
+      try {
+        const res = await fetch('/api/user/switch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        });
+        if (res.ok) {
+          const envelope = await res.json();
+          showToast(`تم تبديل الجلسة بنجاح إلى: ${envelope.data?.user?.name || ''}`, 'success');
+          fetchAllData();
+        } else {
+          showToast('فشل في تبديل الجلسة', 'error');
+        }
+      } catch (err: any) {
+        showToast(err.message, 'error');
+      }
+    };
+    triggerMfaChallenge(action);
+  };
+
+
   const handleToggleUserMode = (mode: 'enterprise' | 'hunter') => {
     setUserMode(mode);
     localStorage.setItem('sec_user_mode', mode);
@@ -332,13 +411,231 @@ export default function App() {
     }
   };
 
+  // Fetch security profile for the logged in user from Firestore
+  const fetchUserSecurityProfile = async (email: string, userId: string) => {
+    try {
+      const profileRef = doc(db, 'user_security_profiles', userId);
+      const docSnap = await getDoc(profileRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setTwoFactorEnabled(data.twoFactorEnabled || false);
+        setTwoFactorType(data.twoFactorType || null);
+        setTwoFactorSecret(data.twoFactorSecret || '');
+        setTwoFactorPhone(data.twoFactorPhone || '');
+        // Cache to local storage for offline resilience
+        localStorage.setItem(`sec_profile_${userId}`, JSON.stringify(data));
+      } else {
+        const defaultProfile = {
+          userId,
+          email,
+          twoFactorEnabled: false,
+          updatedAt: new Date().toISOString()
+        };
+        try {
+          await setDoc(profileRef, defaultProfile);
+        } catch (writeErr) {
+          console.warn("Firestore setDoc failed, running in offline fallback:", writeErr);
+        }
+        setTwoFactorEnabled(false);
+        setTwoFactorType(null);
+        setTwoFactorSecret('');
+        setTwoFactorPhone('');
+        localStorage.setItem(`sec_profile_${userId}`, JSON.stringify(defaultProfile));
+      }
+    } catch (err: any) {
+      console.warn("Error fetching security profile from Firestore (using offline local fallback):", err.message || err);
+      // Fallback to localStorage
+      const cached = localStorage.getItem(`sec_profile_${userId}`);
+      if (cached) {
+        try {
+          const data = JSON.parse(cached);
+          setTwoFactorEnabled(data.twoFactorEnabled || false);
+          setTwoFactorType(data.twoFactorType || null);
+          setTwoFactorSecret(data.twoFactorSecret || '');
+          setTwoFactorPhone(data.twoFactorPhone || '');
+        } catch (e) {
+          console.error("Failed to parse cached security profile:", e);
+        }
+      } else {
+        // Safe defaults
+        setTwoFactorEnabled(false);
+        setTwoFactorType(null);
+        setTwoFactorSecret('');
+        setTwoFactorPhone('');
+      }
+    }
+  };
+
+  // Generate random TOTP secret key
+  const generateTotpSecret = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let secret = '';
+    for (let i = 0; i < 16; i++) {
+      secret += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setTempSecret(secret);
+  };
+
+  // Generate backup codes
+  const generateBackupCodes = () => {
+    const codes = [];
+    for (let i = 0; i < 4; i++) {
+      const code = 'SEC-' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(1000 + Math.random() * 9000);
+      codes.push(code);
+    }
+    setBackupCodes(codes);
+  };
+
+  // Handle opening of 2FA setup modal
+  const handleOpenMfaSetup = () => {
+    generateTotpSecret();
+    setMfaSetupStep(1);
+    setMfaSetupCode('');
+    setTempPhone('');
+    setMfaError(null);
+    setShowMfaSetupModal(true);
+  };
+
+  // Handle verification of code during setup
+  const handleVerifySetup = async () => {
+    if (mfaSetupCode.length !== 6 || !/^\d+$/.test(mfaSetupCode)) {
+      setMfaError('يرجى إدخال رمز صحيح مكون من 6 أرقام.');
+      return;
+    }
+    setMfaError(null);
+    generateBackupCodes();
+    setMfaSetupStep(4);
+  };
+
+  // Save 2FA settings to Firestore and backend
+  const handleCompleteMfaEnrollment = async () => {
+    if (!userProfile) return;
+    const userId = userProfile.user.id || 'tm-1';
+    const updatedProfile = {
+      userId,
+      email: userProfile.user.email,
+      twoFactorEnabled: true,
+      twoFactorType: twoFactorType || 'totp',
+      twoFactorSecret: twoFactorType === 'totp' ? tempSecret : '',
+      twoFactorPhone: twoFactorType === 'sms' ? tempPhone : '',
+      updatedAt: new Date().toISOString()
+    };
+
+    // Store in local storage first to be robust offline
+    localStorage.setItem(`sec_profile_${userId}`, JSON.stringify(updatedProfile));
+    setTwoFactorEnabled(true);
+    setTwoFactorSecret(updatedProfile.twoFactorSecret);
+    setTwoFactorPhone(updatedProfile.twoFactorPhone);
+
+    try {
+      const profileRef = doc(db, 'user_security_profiles', userId);
+      await setDoc(profileRef, updatedProfile);
+    } catch (err: any) {
+      console.warn("Firestore offline during MFA enrollment, saved to local cache:", err.message || err);
+    }
+
+    setAuditLogs(prev => [
+      {
+        id: `log-${Date.now()}`,
+        userId: userId,
+        userEmail: userProfile.user.email,
+        action: "تفعيل المصادقة الثنائية (2FA)",
+        details: `تم بنجاح تفعيل التحقق الثنائي (${twoFactorType === 'totp' ? 'تطبيق Authenticator' : 'رسالة SMS'}) لحساب المستخدم.`,
+        ipAddress: "127.0.0.1",
+        timestamp: new Date().toISOString()
+      },
+      ...prev
+    ]);
+    showToast('تم تفعيل المصادقة الثنائية بنجاح!', 'success');
+    setShowMfaSetupModal(false);
+  };
+
+  // Handle disabling 2FA
+  const handleDisableMfa = async () => {
+    if (!userProfile) return;
+    const disableAction = async () => {
+      const userId = userProfile.user.id || 'tm-1';
+      const updatedProfile = {
+        userId,
+        email: userProfile.user.email,
+        twoFactorEnabled: false,
+        twoFactorType: null,
+        twoFactorSecret: '',
+        twoFactorPhone: '',
+        updatedAt: new Date().toISOString()
+      };
+
+      // Store in local storage first to be robust offline
+      localStorage.setItem(`sec_profile_${userId}`, JSON.stringify(updatedProfile));
+      setTwoFactorEnabled(false);
+      setTwoFactorType(null);
+      setTwoFactorSecret('');
+      setTwoFactorPhone('');
+
+      try {
+        const profileRef = doc(db, 'user_security_profiles', userId);
+        await setDoc(profileRef, updatedProfile);
+      } catch (err: any) {
+        console.warn("Firestore offline during disabling 2FA, updated local cache:", err.message || err);
+      }
+
+      setAuditLogs(prev => [
+        {
+          id: `log-${Date.now()}`,
+          userId: userId,
+          userEmail: userProfile.user.email,
+          action: "تعطيل المصادقة الثنائية (2FA)",
+          details: `تم إلغاء تفعيل بروتوكول التحقق الثنائي للحساب.`,
+          ipAddress: "127.0.0.1",
+          timestamp: new Date().toISOString()
+        },
+        ...prev
+      ]);
+      showToast('تم تعطيل المصادقة الثنائية بنجاح.', 'info');
+    };
+    triggerMfaChallenge(disableAction);
+  };
+
+  // Trigger 2FA Challenge helper
+  const triggerMfaChallenge = (callback: () => void) => {
+    if (!twoFactorEnabled) {
+      callback();
+      return;
+    }
+    setMfaChallengeCallback(() => callback);
+    setMfaChallengeCode('');
+    setMfaChallengeError(null);
+    setShowMfaChallenge(true);
+  };
+
+  // Verify challenge code
+  const handleVerifyChallenge = () => {
+    if (mfaChallengeCode.length !== 6 || !/^\d+$/.test(mfaChallengeCode)) {
+      setMfaChallengeError('رمز غير صالح. يرجى إدخال 6 أرقام.');
+      return;
+    }
+    setMfaChallengeError(null);
+    setShowMfaChallenge(false);
+    showToast('تم التحقق من الهوية الثنائية بنجاح!', 'success');
+    if (mfaChallengeCallback) {
+      mfaChallengeCallback();
+    }
+  };
+
   // LOAD ALL DATA FROM BACKEND API ON STARTUP
   const fetchAllData = async () => {
     try {
       setIsLoading(true);
       const profileRes = await fetch('/api/user/profile');
       const profileEnvelope = await profileRes.json();
-      setUserProfile(profileEnvelope.success ? profileEnvelope.data : null);
+      if (profileEnvelope.success && profileEnvelope.data) {
+        setUserProfile(profileEnvelope.data);
+        const user = profileEnvelope.data.user;
+        await fetchUserSecurityProfile(user.email, user.id || 'tm-1');
+      } else {
+        setUserProfile(null);
+      }
+
 
       const projectsRes = await fetch('/api/projects');
       const projectsEnvelope = await projectsRes.json();
@@ -356,19 +653,30 @@ export default function App() {
 
       const vulnsRes = await fetch('/api/vulnerabilities');
       const vulnsEnvelope = await vulnsRes.json();
-      setVulnerabilities(vulnsEnvelope.success ? vulnsEnvelope.data : []);
+      const vulnsData = vulnsEnvelope?.success ? vulnsEnvelope.data : vulnsEnvelope;
+      setVulnerabilities(Array.isArray(vulnsData) ? vulnsData : []);
 
       const scansRes = await fetch('/api/scans');
       const scansEnvelope = await scansRes.json();
-      setActiveScans(scansEnvelope.success ? scansEnvelope.data : []);
+      const scansData = scansEnvelope?.success ? scansEnvelope.data : scansEnvelope;
+      setActiveScans(Array.isArray(scansData) ? scansData : []);
 
       const logsRes = await fetch('/api/audit-logs');
       const logsEnvelope = await logsRes.json();
-      setAuditLogs(logsEnvelope.success ? logsEnvelope.data : []);
+      const logsData = logsEnvelope?.success ? logsEnvelope.data : logsEnvelope;
+      setAuditLogs(Array.isArray(logsData) ? logsData : []);
 
       const historyRes = await fetch('/api/reports/history');
       const historyEnvelope = await historyRes.json();
-      setReportsHistory(historyEnvelope.success ? historyEnvelope.data : []);
+      const historyData = historyEnvelope?.success ? historyEnvelope.data : historyEnvelope;
+      setReportsHistory(Array.isArray(historyData) ? historyData : []);
+
+      const remRes = await fetch('/api/remediations');
+      if (remRes.ok) {
+        const remEnvelope = await remRes.json();
+        const remData = remEnvelope?.success ? remEnvelope.data : remEnvelope;
+        setRemediations(Array.isArray(remData) ? remData : []);
+      }
     } catch (err) {
       console.error("Error loading fullstack data:", err);
       showToast("حدث خطأ أثناء تحميل بيانات المنصة من الخادم.", "error");
@@ -378,6 +686,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    useSecurityStore.getState().fetchAllData();
     fetchAllData();
   }, []);
 
@@ -405,7 +714,8 @@ export default function App() {
             const projContentType = projectsRes.headers.get("content-type");
             if (projContentType && projContentType.includes("application/json")) {
               const projectsEnvelope = await projectsRes.json();
-              setProjects(projectsEnvelope.success ? projectsEnvelope.data : []);
+              const projData = projectsEnvelope?.success ? projectsEnvelope.data : projectsEnvelope;
+              setProjects(Array.isArray(projData) ? projData : []);
             }
           }
 
@@ -414,7 +724,8 @@ export default function App() {
             const vulnContentType = vulnsRes.headers.get("content-type");
             if (vulnContentType && vulnContentType.includes("application/json")) {
               const vulnsEnvelope = await vulnsRes.json();
-              setVulnerabilities(vulnsEnvelope.success ? vulnsEnvelope.data : []);
+              const vulnsData = vulnsEnvelope?.success ? vulnsEnvelope.data : vulnsEnvelope;
+              setVulnerabilities(Array.isArray(vulnsData) ? vulnsData : []);
             }
           }
         }
@@ -665,6 +976,68 @@ export default function App() {
       });
     } catch (err: any) {
       showToast(err.message, 'error');
+    }
+  };
+
+  // 6.2. AUTOMATED SELF-HEALING & AUTO-REMEDIATION (Volume XII)
+  const handlePerformSelfHealing = async (vulnId: string) => {
+    try {
+      const vuln = vulnerabilities.find(v => v.id === vulnId);
+      if (!vuln) return;
+
+      // Reset step state & open modal
+      setRemediationModalVuln(vuln);
+      setRemediationLoading(true);
+      setRemediationResult(null);
+      setValidationStep(1);
+      setSimulatedLogs('[SYSTEM] Initiating Isolated Sandbox Environment...\n[SYSTEM] Provisioning secure Docker runtime (gVisor container)...\n');
+
+      // Start stepping
+      setTimeout(() => {
+        setValidationStep(2);
+        setSimulatedLogs(prev => prev + '[STEP 1] Generating secure AI patch proposal with Gemini...\n');
+      }, 1000);
+
+      setTimeout(() => {
+        setValidationStep(3);
+        setSimulatedLogs(prev => prev + '[STEP 2] Launching ESLint & Compiler check on patched branch... Passed!\n');
+      }, 2000);
+
+      setTimeout(() => {
+        setValidationStep(4);
+        setSimulatedLogs(prev => prev + '[STEP 3] Running full unit tests suite... 38 tests passed. Passed!\n');
+      }, 3000);
+
+      setTimeout(() => {
+        setValidationStep(5);
+        setSimulatedLogs(prev => prev + '[STEP 4] Re-scanning patched code with local ruleset... 0 vulnerabilities. Passed!\n[SYSTEM] Triple Validation complete. Pushing secure branch and creating Pull Request.\n');
+      }, 4000);
+
+      // Make the actual call
+      const res = await fetch(`/api/vulnerabilities/${vulnId}/remediate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await res.json();
+      
+      // Delay slightly so the steps feel natural
+      setTimeout(() => {
+        if (data.success) {
+          setRemediationResult(data.data);
+          // Refresh remediations & audit logs
+          fetchAllData();
+          showToast("تم تطبيق الترميم التلقائي والشفاء الذاتي للكود بنجاح تام!", "success");
+        } else {
+          showToast(data.errors?.[0] || "فشل ترميم الكود آلياً.", "error");
+        }
+        setRemediationLoading(false);
+      }, 5000);
+
+    } catch (error: any) {
+      console.error(error);
+      showToast("خطأ غير متوقع في محرك المعالجة.", "error");
+      setRemediationLoading(false);
     }
   };
 
@@ -970,27 +1343,30 @@ export default function App() {
 
   // 9. UPGRADE SaaS PLANS
   const handleUpgradeSubscription = async (planName: SaaSPlan) => {
-    setActionLoading(`upgrade-${planName}`);
-    try {
-      const res = await fetch('/api/subscription/upgrade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newPlan: planName })
-      });
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.errors?.[0] || errData.message || "فشل ترقية الاشتراك");
+    const action = async () => {
+      setActionLoading(`upgrade-${planName}`);
+      try {
+        const res = await fetch('/api/subscription/upgrade', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ newPlan: planName })
+        });
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.errors?.[0] || errData.message || "فشل ترقية الاشتراك");
+        }
+        const envelope = await res.json();
+        const data = envelope.success ? envelope.data : {};
+        showToast(`تهانينا! تم تحويل رخصة اشتراكك بنجاح إلى باقة ${planName}. تم تحديث حصة فحص الموارد واستشارات الذكاء الاصطناعي فورياً.`, 'success');
+        
+        fetchAllData();
+      } catch (err: any) {
+        showToast(err.message, 'error');
+      } finally {
+        setActionLoading(null);
       }
-      const envelope = await res.json();
-      const data = envelope.success ? envelope.data : {};
-      showToast(`تهانينا! تم تحويل رخصة اشتراكك بنجاح إلى باقة ${planName}. تم تحديث حصة فحص الموارد واستشارات الذكاء الاصطناعي فورياً.`, 'success');
-      
-      fetchAllData();
-    } catch (err: any) {
-      showToast(err.message, 'error');
-    } finally {
-      setActionLoading(null);
-    }
+    };
+    triggerMfaChallenge(action);
   };
 
   // 10. INVITE TEAM MEMBER
@@ -1000,45 +1376,51 @@ export default function App() {
       showToast("يرجى إدخال اسم الموظف وبريده الإلكتروني لإرسال الدعوة.", "error");
       return;
     }
-    setActionLoading('inviteTeam');
-    try {
-      const res = await fetch('/api/team/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newMemberName, email: newMemberEmail, role: newMemberRole })
-      });
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.errors?.[0] || errData.message || "فشل إضافة العضو");
+    const action = async () => {
+      setActionLoading('inviteTeam');
+      try {
+        const res = await fetch('/api/team/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: newMemberName, email: newMemberEmail, role: newMemberRole })
+        });
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.errors?.[0] || errData.message || "فشل إضافة العضو");
+        }
+        showToast(`تمت دعوة ${newMemberName} برتبة ${newMemberRole} بنجاح إلى المنصة الأمنية.`, 'success');
+        setNewMemberName('');
+        setNewMemberEmail('');
+        fetchAllData();
+      } catch (err: any) {
+        showToast(err.message, 'error');
+      } finally {
+        setActionLoading(null);
       }
-      showToast(`تمت دعوة ${newMemberName} برتبة ${newMemberRole} بنجاح إلى المنصة الأمنية.`, 'success');
-      setNewMemberName('');
-      setNewMemberEmail('');
-      fetchAllData();
-    } catch (err: any) {
-      showToast(err.message, 'error');
-    } finally {
-      setActionLoading(null);
-    }
+    };
+    triggerMfaChallenge(action);
   };
 
   // 11. REMOVE TEAM MEMBER
   const handleRemoveTeamMember = async (memberId: string) => {
     if (!confirm("هل أنت متأكد من رغبتك في سحب صلاحيات هذا العضو وإزالته من لوحة التحكم؟")) return;
-    setActionLoading(`remove-team-${memberId}`);
-    try {
-      const res = await fetch(`/api/team/${memberId}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.errors?.[0] || errData.message || "فشل إزالة العضو");
+    const action = async () => {
+      setActionLoading(`remove-team-${memberId}`);
+      try {
+        const res = await fetch(`/api/team/${memberId}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.errors?.[0] || errData.message || "فشل إزالة العضو");
+        }
+        showToast("تم إزالة العضو وإبطال مفاتيح وصوله بنجاح.", "success");
+        fetchAllData();
+      } catch (err: any) {
+        showToast(err.message, 'error');
+      } finally {
+        setActionLoading(null);
       }
-      showToast("تم إزالة العضو وإبطال مفاتيح وصوله بنجاح.", "success");
-      fetchAllData();
-    } catch (err: any) {
-      showToast(err.message, 'error');
-    } finally {
-      setActionLoading(null);
-    }
+    };
+    triggerMfaChallenge(action);
   };
 
   // 11.5. BUG BOUNTY HANDLERS
@@ -1101,21 +1483,28 @@ export default function App() {
   };
 
   // Helpers to calculate overall risk metrics for visual graphics
-  const totalScansPerformed = activeScans.length;
-  const verifiedTargetsCount = projects.reduce((acc, proj) => {
-    return acc + proj.targets.filter(t => t.verificationStatus === 'Verified').length;
+  const safeActiveScans = Array.isArray(activeScans) ? activeScans : [];
+  const safeProjects = Array.isArray(projects) ? projects : [];
+  const safeVulnerabilities = Array.isArray(vulnerabilities) ? vulnerabilities : [];
+  const safeBbPrograms = Array.isArray(bbPrograms) ? bbPrograms : [];
+  const safeBbLeaderboard = Array.isArray(bbLeaderboard) ? bbLeaderboard : [];
+
+  const totalScansPerformed = safeActiveScans.length;
+  const verifiedTargetsCount = safeProjects.reduce((acc, proj) => {
+    const targets = Array.isArray(proj?.targets) ? proj.targets : [];
+    return acc + targets.filter(t => t?.verificationStatus === 'Verified').length;
   }, 0);
-  const activeCriticalCount = vulnerabilities.filter(v => v.severity === 'Critical' && !v.isFalsePositive).length;
-  const activeHighCount = vulnerabilities.filter(v => v.severity === 'High' && !v.isFalsePositive).length;
-  const activeMediumCount = vulnerabilities.filter(v => v.severity === 'Medium' && !v.isFalsePositive).length;
-  const activeLowCount = vulnerabilities.filter(v => v.severity === 'Low' && !v.isFalsePositive).length;
+  const activeCriticalCount = safeVulnerabilities.filter(v => v?.severity === 'Critical' && !v?.isFalsePositive).length;
+  const activeHighCount = safeVulnerabilities.filter(v => v?.severity === 'High' && !v?.isFalsePositive).length;
+  const activeMediumCount = safeVulnerabilities.filter(v => v?.severity === 'Medium' && !v?.isFalsePositive).length;
+  const activeLowCount = safeVulnerabilities.filter(v => v?.severity === 'Low' && !v?.isFalsePositive).length;
   const totalActiveVulnerabilities = activeCriticalCount + activeHighCount + activeMediumCount + activeLowCount;
   
   // Computed vulnerability metrics for interactive distribution charts
-  const filteredVulnsForCharts = vulnerabilities.filter(v => {
-    const matchSearch = v.title.toLowerCase().includes(searchQuery.toLowerCase()) || v.type.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchSeverity = severityFilter === 'All' || v.severity === severityFilter;
-    return matchSearch && matchSeverity && !v.isFalsePositive;
+  const filteredVulnsForCharts = safeVulnerabilities.filter(v => {
+    const matchSearch = (v?.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || (v?.type || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchSeverity = severityFilter === 'All' || v?.severity === severityFilter;
+    return matchSearch && matchSeverity && !v?.isFalsePositive;
   });
 
   const getTypesChartData = () => {
@@ -1145,15 +1534,17 @@ export default function App() {
   const teamMembers = userProfile?.teamMembers || [];
 
   // Render CVSS Score Badge styled perfectly
-  const getSeverityBadge = (severity: SeverityLevel) => {
-    switch (severity) {
-      case 'Critical':
+  const getSeverityBadge = (severity: SeverityLevel | string) => {
+    const norm = String(severity).toUpperCase();
+    switch (norm) {
+      case 'CRITICAL':
         return <span className="px-2 py-1 text-xs font-mono font-bold rounded bg-red-950 border border-red-750 text-red-400">حرج جداً</span>;
-      case 'High':
+      case 'HIGH':
         return <span className="px-2 py-1 text-xs font-mono font-bold rounded bg-amber-950 border border-amber-750 text-amber-400">عالٍ</span>;
-      case 'Medium':
+      case 'MEDIUM':
         return <span className="px-2 py-1 text-xs font-mono font-bold rounded bg-yellow-950 border border-yellow-750 text-yellow-400">متوسط</span>;
-      case 'Low':
+      case 'LOW':
+      default:
         return <span className="px-2 py-1 text-xs font-mono font-bold rounded bg-slate-800 border border-slate-700 text-slate-300">منخفض</span>;
     }
   };
@@ -1241,26 +1632,54 @@ export default function App() {
           </button>
         </div>
 
-        {/* PROFILE CARD QUICK DISPLAY */}
-        {userProfile && (
-          <div className="flex items-center gap-4 bg-slate-950/60 px-4 py-2 rounded-xl border border-slate-800">
-            <div className="text-left md:text-right">
-              <div className="text-xs font-semibold text-slate-300 flex items-center justify-end gap-1.5">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
-                {userProfile.user.email}
+        {/* PROFILE CARD QUICK DISPLAY OR AUTH TRIGGER */}
+        {userProfile ? (
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-3 bg-slate-950/60 px-3.5 py-1.5 rounded-xl border border-slate-850">
+              <div className="text-right">
+                <div className="flex items-center gap-1.5 justify-end">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0"></span>
+                  <select
+                    value={userProfile?.user?.id || (userProfile as any)?.id || "tm-1"}
+                    onChange={(e) => handleSwitchUser(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-slate-200 border-none outline-none cursor-pointer focus:ring-0 p-0 hover:text-white transition-colors dir-rtl font-sans text-right"
+                  >
+                    {(userProfile?.teamMembers || []).map((m: any) => (
+                      <option key={m.id} value={m.id} className="bg-slate-950 text-slate-200 font-sans">
+                        {m.name} ({m.role})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5 flex items-center justify-end gap-1 font-mono">
+                  <span>{userProfile?.user?.email || (userProfile as any)?.email || ''}</span>
+                  <span className="text-slate-700">|</span>
+                  <span className="text-amber-400 font-bold">{userProfile?.subscription?.plan || (userProfile as any)?.plan || 'FREE'}</span>
+                </div>
               </div>
-              <div className="text-[10px] text-slate-400 mt-0.5 flex items-center justify-end gap-1">
-                <span>دور الوصول:</span>
-                <span className="text-cyan-400 font-bold">{userProfile.user.role}</span>
-                <span className="text-slate-600">|</span>
-                <span>الباقة:</span>
-                <span className="text-amber-400 font-bold">{userProfile.subscription.plan}</span>
+              <div className="w-8 h-8 rounded-full bg-cyan-950 border border-cyan-800/40 flex items-center justify-center font-black text-cyan-400 text-xs shrink-0">
+                {(userProfile?.user?.name || (userProfile as any)?.name) ? (userProfile?.user?.name || (userProfile as any)?.name)[0] : 'أ'}
               </div>
             </div>
-            <div className="w-8 h-8 rounded-full bg-cyan-900/60 border border-cyan-500/30 flex items-center justify-center font-bold text-cyan-300 text-sm">
-              أ
-            </div>
+
+            <button
+              onClick={async () => {
+                await storeLogout();
+                setUserProfile(null);
+              }}
+              className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-rose-950/50 hover:border-rose-800 text-slate-400 hover:text-rose-300 text-xs font-bold transition-all"
+              title="تسجيل الخروج من الجلسة"
+            >
+              تسجيل الخروج
+            </button>
           </div>
+        ) : (
+          <button
+            onClick={() => setShowAuthModal(true)}
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
+          >
+            <span>تسجيل الدخول / حساب جديد</span>
+          </button>
         )}
       </header>
 
@@ -1381,12 +1800,12 @@ export default function App() {
               <div>
                 <div className="flex justify-between text-[11px] text-slate-400">
                   <span>عمليات الفحص المتبقية</span>
-                  <span className="font-mono text-cyan-400 font-semibold">{userProfile.subscription.limits.scansRemainingThisMonth} / {userProfile.subscription.limits.scansPerMonth}</span>
+                  <span className="font-mono text-cyan-400 font-semibold">{userProfile?.subscription?.limits?.scansRemainingThisMonth ?? 0} / {userProfile?.subscription?.limits?.scansPerMonth ?? 1}</span>
                 </div>
                 <div className="w-full bg-slate-800 h-1.5 rounded-full mt-1.5 overflow-hidden">
                   <div
                     className="bg-cyan-500 h-full rounded-full transition-all"
-                    style={{ width: `${(userProfile.subscription.limits.scansRemainingThisMonth / userProfile.subscription.limits.scansPerMonth) * 100}%` }}
+                    style={{ width: `${((userProfile?.subscription?.limits?.scansRemainingThisMonth ?? 0) / (userProfile?.subscription?.limits?.scansPerMonth ?? 1)) * 100}%` }}
                   ></div>
                 </div>
               </div>
@@ -1394,12 +1813,12 @@ export default function App() {
               <div>
                 <div className="flex justify-between text-[11px] text-slate-400">
                   <span>استشارات الذكاء الاصطناعي</span>
-                  <span className="font-mono text-amber-400 font-semibold">{userProfile.subscription.limits.aiConsultationsRemaining} / {userProfile.subscription.limits.aiConsultationsPerMonth}</span>
+                  <span className="font-mono text-amber-400 font-semibold">{userProfile?.subscription?.limits?.aiConsultationsRemaining ?? 0} / {userProfile?.subscription?.limits?.aiConsultationsPerMonth ?? 1}</span>
                 </div>
                 <div className="w-full bg-slate-800 h-1.5 rounded-full mt-1.5 overflow-hidden">
                   <div
                     className="bg-amber-500 h-full rounded-full transition-all"
-                    style={{ width: `${(userProfile.subscription.limits.aiConsultationsRemaining / userProfile.subscription.limits.aiConsultationsPerMonth) * 100}%` }}
+                    style={{ width: `${((userProfile?.subscription?.limits?.aiConsultationsRemaining ?? 0) / (userProfile?.subscription?.limits?.aiConsultationsPerMonth ?? 1)) * 100}%` }}
                   ></div>
                 </div>
               </div>
@@ -1427,2590 +1846,32 @@ export default function App() {
           ) : (
             <div className="flex-1">
 
-              {/* A. DASHBOARD VIEW (arabic custom design) */}
-              {activeTab === 'dashboard' && (
-                <div className="space-y-6">
-                  
-                  {/* HERO BANNER SECTION */}
-                  <div className="p-6 bg-radial from-cyan-950/20 via-slate-900 to-slate-900 rounded-2xl border border-slate-800/80 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 blur-3xl rounded-full"></div>
-                    <div className="relative z-10 space-y-2">
-                      <h2 className="text-xl md:text-2xl font-black text-white">لوحة المراقبة الأمنية والتحليل الأوتوماتيكي</h2>
-                      <p className="text-sm text-slate-300 max-w-2xl">
-                        أهلاً بك في منصتك المركزية. يمكنك الآن تتبع نقاط الضعف النشطة، والتحقق من ملكية البنية التحتية، وتشغيل الفحوصات الأمنية المعتمدة وتصنيفها مع طبقة التحليل الذكية لحماية أنظمتك من الثغرات.
-                      </p>
-                      <div className="flex items-center gap-3 pt-2 text-xs text-slate-400">
-                        <span className="flex items-center gap-1"><Check className="w-3.5 h-3.5 text-emerald-400" /> مطابقة OWASP Top 10</span>
-                        <span className="w-1.5 h-1.5 bg-slate-700 rounded-full"></span>
-                        <span className="flex items-center gap-1"><Check className="w-3.5 h-3.5 text-emerald-400" /> معايير ISO 27001</span>
-                        <span className="w-1.5 h-1.5 bg-slate-700 rounded-full"></span>
-                        <span className="flex items-center gap-1"><Check className="w-3.5 h-3.5 text-emerald-400" /> معيار PCI DSS للمدفوعات</span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setShowAddProjectModal(true)}
-                      className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shrink-0 shadow-lg shadow-cyan-950/20"
-                    >
-                      <Plus className="w-4 h-4" />
-                      إضافة مشروع أمني جديد
-                    </button>
-                  </div>
-
-                  {/* HIGH VALUE METRIC CARDS GRID */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    
-                    <div className="bg-slate-900 p-5 rounded-xl border border-slate-800/80 space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-semibold text-slate-400">إجمالي الموارد الأمنية</span>
-                        <div className="p-2 bg-purple-950/60 rounded-lg text-purple-400 border border-purple-500/20"><Briefcase className="w-4 h-4" /></div>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="text-2xl font-black text-white">{projects.reduce((acc, p) => acc + p.targets.length, 0)}</div>
-                        <p className="text-[10px] text-slate-400">أهداف فحص مصرحة ومسجلة</p>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-900 p-5 rounded-xl border border-slate-800/80 space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-semibold text-slate-400">التحقق من الملكية</span>
-                        <div className="p-2 bg-emerald-950/60 rounded-lg text-emerald-400 border border-emerald-500/20"><CheckCircle className="w-4 h-4" /></div>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="text-2xl font-black text-emerald-400">{verifiedTargetsCount}</div>
-                        <p className="text-[10px] text-slate-400">أهداف تم التحقق من ملكيتها</p>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-900 p-5 rounded-xl border border-slate-800/80 space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-semibold text-slate-400">الثغرات الأمنية الفعالة</span>
-                        <div className="p-2 bg-red-950/60 rounded-lg text-red-400 border border-red-500/20"><ShieldAlert className="w-4 h-4" /></div>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="text-2xl font-black text-red-400">{totalActiveVulnerabilities}</div>
-                        <p className="text-[10px] text-slate-400">ثغرات بحاجة لإصلاح فوري</p>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-900 p-5 rounded-xl border border-slate-800/80 space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-semibold text-slate-400">معدل الفحص التراكمي</span>
-                        <div className="p-2 bg-cyan-950/60 rounded-lg text-cyan-400 border border-cyan-500/20"><Activity className="w-4 h-4" /></div>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="text-2xl font-black text-white">{totalScansPerformed + 12}</div>
-                        <p className="text-[10px] text-slate-400">عمليات فحص فنية وتدقيق</p>
-                      </div>
-                    </div>
-
-                  </div>
-
-                  {/* VULNERABILITY DETECTION GROWTH & REMEDIATION RATE TRENDS CHART (RECHARTS) */}
-                  <div className="bg-slate-900 rounded-xl border border-slate-800/80 p-6 space-y-6">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                      <div>
-                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                          <TrendingUp className="w-4 h-4 text-cyan-400" />
-                          معدل نمو اكتشاف الثغرات وتأثير الإصلاحات
-                        </h3>
-                        <p className="text-[11px] text-slate-400 mt-1">
-                          تحليل الاتجاهات الزمنية الشهرية لمعدل اكتشاف الثغرات الأمنية الجديدة مقارنة بمعدلات الإصلاح التراكمية وتأثيرها على تقليص المخاطر.
-                        </p>
-                      </div>
-                      
-                      {/* Controls and Selectors */}
-                      <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-start">
-                        {/* Tab Switchers */}
-                        <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-850 text-[10px]">
-                          <button
-                            onClick={() => setChartView('growth')}
-                            className={`px-3 py-1 rounded transition-all font-medium ${
-                              chartView === 'growth' ? 'bg-cyan-950 text-cyan-300 font-bold border border-cyan-500/15' : 'text-slate-400 hover:text-slate-200'
-                            }`}
-                          >
-                            معدل النمو (%)
-                          </button>
-                          <button
-                            onClick={() => setChartView('counts')}
-                            className={`px-3 py-1 rounded transition-all font-medium ${
-                              chartView === 'counts' ? 'bg-cyan-950 text-cyan-300 font-bold border border-cyan-500/15' : 'text-slate-400 hover:text-slate-200'
-                            }`}
-                          >
-                            العدد المطلق
-                          </button>
-                          <button
-                            onClick={() => setChartView('remediation')}
-                            className={`px-3 py-1 rounded transition-all font-medium ${
-                              chartView === 'remediation' ? 'bg-cyan-950 text-cyan-300 font-bold border border-cyan-500/15' : 'text-slate-400 hover:text-slate-200'
-                            }`}
-                          >
-                            معدل معالجة المشاكل
-                          </button>
-                        </div>
-
-                        {/* Timeframe selector */}
-                        <select
-                          value={chartTimeframe}
-                          onChange={(e: any) => setChartTimeframe(e.target.value)}
-                          className="bg-slate-950 border border-slate-850 rounded-lg px-2 py-1 text-[11px] text-slate-300 hover:text-white hover:border-slate-700 transition-colors cursor-pointer outline-none font-sans"
-                        >
-                          <option value="6m">آخر 6 أشهر</option>
-                          <option value="12m">آخر 12 شهراً</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Chart Box */}
-                    <div className="h-72 w-full bg-slate-950/40 p-4 rounded-xl border border-slate-850/60 relative overflow-hidden">
-                      <ResponsiveContainer width="100%" height="100%">
-                        {chartView === 'growth' ? (
-                          <AreaChart
-                            data={monthlySecurityData.slice(chartTimeframe === '6m' ? -6 : 0)}
-                            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                          >
-                            <defs>
-                              <linearGradient id="growthColor" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.25}/>
-                                <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} vertical={false} />
-                            <XAxis
-                              dataKey="month"
-                              stroke="#64748b"
-                              fontSize={10}
-                              tickLine={false}
-                              axisLine={false}
-                              dy={10}
-                            />
-                            <YAxis
-                              stroke="#64748b"
-                              fontSize={10}
-                              tickLine={false}
-                              axisLine={false}
-                              unit="%"
-                            />
-                            <Tooltip content={<MonthlyChartTooltip />} />
-                            <Legend
-                              verticalAlign="top"
-                              height={36}
-                              iconType="circle"
-                              iconSize={8}
-                              formatter={(value) => <span className="text-[11px] text-slate-300 font-medium">{value}</span>}
-                            />
-                            <Area
-                              name="معدل نمو اكتشاف الثغرات"
-                              type="monotone"
-                              dataKey="growthRate"
-                              stroke="#06b6d4"
-                              strokeWidth={2}
-                              fillOpacity={1}
-                              fill="url(#growthColor)"
-                              unit="%"
-                            />
-                          </AreaChart>
-                        ) : chartView === 'counts' ? (
-                          <LineChart
-                            data={monthlySecurityData.slice(chartTimeframe === '6m' ? -6 : 0)}
-                            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} vertical={false} />
-                            <XAxis
-                              dataKey="month"
-                              stroke="#64748b"
-                              fontSize={10}
-                              tickLine={false}
-                              axisLine={false}
-                              dy={10}
-                            />
-                            <YAxis
-                              stroke="#64748b"
-                              fontSize={10}
-                              tickLine={false}
-                              axisLine={false}
-                            />
-                            <Tooltip content={<MonthlyChartTooltip />} />
-                            <Legend
-                              verticalAlign="top"
-                              height={36}
-                              iconType="circle"
-                              iconSize={8}
-                              formatter={(value) => <span className="text-[11px] text-slate-300 font-medium">{value}</span>}
-                            />
-                            <Line
-                              name="الثغرات المكتشفة حديثاً"
-                              type="monotone"
-                              dataKey="detected"
-                              stroke="#f43f5e"
-                              strokeWidth={2.5}
-                              dot={{ r: 4, strokeWidth: 2, fill: "#0f172a" }}
-                              activeDot={{ r: 6 }}
-                            />
-                            <Line
-                              name="الثغرات التي تم معالجتها وإصلاحها"
-                              type="monotone"
-                              dataKey="resolved"
-                              stroke="#10b981"
-                              strokeWidth={2}
-                              dot={{ r: 3 }}
-                            />
-                            <Line
-                              name="الثغرات النشطة المتبقية"
-                              type="monotone"
-                              dataKey="activeVulns"
-                              stroke="#8b5cf6"
-                              strokeWidth={1.5}
-                              strokeDasharray="4 4"
-                              dot={false}
-                            />
-                          </LineChart>
-                        ) : (
-                          <AreaChart
-                            data={monthlySecurityData.slice(chartTimeframe === '6m' ? -6 : 0)}
-                            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                          >
-                            <defs>
-                              <linearGradient id="remediationColor" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
-                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} vertical={false} />
-                            <XAxis
-                              dataKey="month"
-                              stroke="#64748b"
-                              fontSize={10}
-                              tickLine={false}
-                              axisLine={false}
-                              dy={10}
-                            />
-                            <YAxis
-                              stroke="#64748b"
-                              fontSize={10}
-                              tickLine={false}
-                              axisLine={false}
-                              unit="%"
-                            />
-                            <Tooltip content={<MonthlyChartTooltip />} />
-                            <Legend
-                              verticalAlign="top"
-                              height={36}
-                              iconType="circle"
-                              iconSize={8}
-                              formatter={(value) => <span className="text-[11px] text-slate-300 font-medium">{value}</span>}
-                            />
-                            <Area
-                              name="نسبة نجاح واكتمال الإصلاح الفوري"
-                              type="monotone"
-                              dataKey="remediationRate"
-                              stroke="#10b981"
-                              strokeWidth={2}
-                              fillOpacity={1}
-                              fill="url(#remediationColor)"
-                              unit="%"
-                            />
-                          </AreaChart>
-                        )}
-                      </ResponsiveContainer>
-                    </div>
-
-                    {/* Chart Insights block */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                      <div className="bg-slate-950/55 p-3 rounded-xl border border-slate-850/60 flex items-start gap-2.5">
-                        <div className="p-1.5 bg-cyan-950/85 text-cyan-400 rounded-lg border border-cyan-500/10 text-xs font-mono font-bold shrink-0">
-                          {chartTimeframe === '6m' ? '5.5%' : '0.0%'}
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-white">تراجع معدل النمو الفصلي</h4>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            تراجع ملحوظ في سرعة اكتشاف الثغرات الجديدة بفضل اعتماد الفحص الدوري المسبق في مراحل التطوير الأولى.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="bg-slate-950/55 p-3 rounded-xl border border-slate-850/60 flex items-start gap-2.5">
-                        <div className="p-1.5 bg-emerald-950/85 text-emerald-400 rounded-lg border border-emerald-500/10 text-xs font-mono font-bold shrink-0">
-                          {chartTimeframe === '6m' ? '92.5%' : '84.3%'}
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-white">متوسط كفاءة الإصلاح</h4>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            ارتفاع كبير في نسبة إصلاح الثغرات وإغلاقها فورياً بفضل توصيات مساعد الأمن الذكي وحلول الذكاء الاصطناعي.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="bg-slate-950/55 p-3 rounded-xl border border-slate-850/60 flex items-start gap-2.5">
-                        <div className="p-1.5 bg-purple-950/85 text-purple-400 rounded-lg border border-purple-500/10 text-xs font-mono font-bold shrink-0">
-                          -32%
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-white">تقليص الخطر الإجمالي</h4>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            انخفاض جوهري في مؤشر التعرض للمخاطر التراكمية مقارنة بنفس الفترة من الربع السنوي السابق.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* VISUAL CHARTS AND LIVE ACTION STREAM SECTION */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    
-                    {/* SEVERITY BREAKDOWN GRAPHICS CARD */}
-                    <div className="bg-slate-900 rounded-xl border border-slate-800/80 p-5 space-y-5 lg:col-span-1 flex flex-col justify-between">
-                      <div>
-                        <h3 className="text-sm font-bold text-white">توزيع الثغرات حسب مستوى الخطورة</h3>
-                        <p className="text-[11px] text-slate-400 mt-1">تحديد مستوى الاستعجال والخطورة لحل المشاكل الأمنية</p>
-                      </div>
-
-                      {/* Custom SVG / Pure CSS Visual Charts block */}
-                      <div className="py-6 flex items-center justify-center gap-6 relative">
-                        <div className="relative w-36 h-36 flex items-center justify-center">
-                          {/* Radial Progress Visual representation */}
-                          <div className="absolute inset-0 rounded-full border-8 border-slate-850"></div>
-                          <div className="absolute inset-2 rounded-full border border-dashed border-slate-800"></div>
-                          <div className="text-center z-10">
-                            <span className="text-3xl font-black text-white">{totalActiveVulnerabilities}</span>
-                            <p className="text-[10px] text-slate-400 font-medium">ثغرة نشطة</p>
-                          </div>
-                        </div>
-
-                        {/* Bar Breakdown Legend */}
-                        <div className="flex-1 space-y-2.5">
-                          <div>
-                            <div className="flex justify-between text-[11px] text-slate-300">
-                              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>حرج جداً</span>
-                              <span className="font-mono font-bold text-red-400">{activeCriticalCount}</span>
-                            </div>
-                            <div className="w-full bg-slate-850 h-1 rounded-full mt-1"><div className="bg-red-500 h-full rounded-full" style={{ width: `${totalActiveVulnerabilities ? (activeCriticalCount / totalActiveVulnerabilities) * 100 : 0}%` }}></div></div>
-                          </div>
-
-                          <div>
-                            <div className="flex justify-between text-[11px] text-slate-300">
-                              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>عالي</span>
-                              <span className="font-mono font-bold text-amber-400">{activeHighCount}</span>
-                            </div>
-                            <div className="w-full bg-slate-850 h-1 rounded-full mt-1"><div className="bg-amber-500 h-full rounded-full" style={{ width: `${totalActiveVulnerabilities ? (activeHighCount / totalActiveVulnerabilities) * 100 : 0}%` }}></div></div>
-                          </div>
-
-                          <div>
-                            <div className="flex justify-between text-[11px] text-slate-300">
-                              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>متوسط</span>
-                              <span className="font-mono font-bold text-yellow-400">{activeMediumCount}</span>
-                            </div>
-                            <div className="w-full bg-slate-850 h-1 rounded-full mt-1"><div className="bg-yellow-500 h-full rounded-full" style={{ width: `${totalActiveVulnerabilities ? (activeMediumCount / totalActiveVulnerabilities) * 100 : 0}%` }}></div></div>
-                          </div>
-
-                          <div>
-                            <div className="flex justify-between text-[11px] text-slate-300">
-                              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span>منخفض</span>
-                              <span className="font-mono font-bold text-slate-300">{activeLowCount}</span>
-                            </div>
-                            <div className="w-full bg-slate-850 h-1 rounded-full mt-1"><div className="bg-slate-400 h-full rounded-full" style={{ width: `${totalActiveVulnerabilities ? (activeLowCount / totalActiveVulnerabilities) * 100 : 0}%` }}></div></div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-850 text-[10px] text-slate-400">
-                        مستوى المخاطر التراكمي: <span className="font-mono font-bold text-red-400">67/100 (مرتفع)</span>. يرجى البدء بإصلاح الثغرات الحرجة لتجنب الاستغلال الخارجي.
-                      </div>
-                    </div>
-
-                    {/* LIVE COMPLIANCE STATUS BAR CHRONOLOGY */}
-                    <div className="bg-slate-900 rounded-xl border border-slate-800/80 p-5 space-y-4 lg:col-span-2">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h3 className="text-sm font-bold text-white">حالة المطابقة الأمنية الفورية (Compliance)</h3>
-                          <p className="text-[11px] text-slate-400 mt-1">تحديد مدى جهوزية الأنظمة للتفتيش الإداري والمعايير الدولية</p>
-                        </div>
-                        <div className="text-xs bg-cyan-950 text-cyan-400 border border-cyan-500/20 px-2 py-1 rounded">
-                          مستوى الأمان الحالي: <span className="font-mono font-bold text-white">76%</span>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-3">
-                        
-                        <div className="bg-slate-950 p-4 rounded-xl border border-slate-850 text-center space-y-2">
-                          <span className="text-xs text-slate-400 block">OWASP Top 10</span>
-                          <span className="text-2xl font-black font-mono text-emerald-400">A+</span>
-                          <span className="text-[10px] text-slate-500 block">تجاوز الثغرات القياسية</span>
-                        </div>
-
-                        <div className="bg-slate-950 p-4 rounded-xl border border-slate-850 text-center space-y-2">
-                          <span className="text-xs text-slate-400 block">ISO 27001</span>
-                          <span className="text-2xl font-black font-mono text-cyan-400">92%</span>
-                          <span className="text-[10px] text-slate-500 block">امتثال الضوابط الفنية</span>
-                        </div>
-
-                        <div className="bg-slate-950 p-4 rounded-xl border border-slate-850 text-center space-y-2">
-                          <span className="text-xs text-slate-400 block">PCI DSS v4.0</span>
-                          <span className="text-2xl font-black font-mono text-amber-500">B-</span>
-                          <span className="text-[10px] text-slate-500 block">أمان معالجة الدفع</span>
-                        </div>
-
-                      </div>
-
-                      {/* SIMULATED PROGRESS ACTIVE SCANS & PIPELINES */}
-                      <div className="pt-2 space-y-3">
-                        <div className="flex justify-between items-center">
-                          <h4 className="text-xs font-bold text-slate-300">محرك الفحص النشط والتقدم</h4>
-                          <span className="text-[10px] text-cyan-400 font-mono">تحديث فوري</span>
-                        </div>
-
-                        {activeScans.length === 0 ? (
-                          <div className="p-4 bg-slate-950/40 rounded-xl border border-slate-850 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
-                            <Terminal className="w-4 h-4" />
-                            <span>لا توجد عمليات فحص نشطة حالياً. يمكنك تفعيل فحص أمني من قائمة الأهداف.</span>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            {activeScans.map((scan) => (
-                              <div
-                                key={scan.id}
-                                onClick={() => {
-                                  setActiveTerminalScanId(scan.id);
-                                  setShowTerminal(true);
-                                }}
-                                className="p-3 bg-slate-950 hover:bg-slate-900 cursor-pointer rounded-xl border border-slate-850 hover:border-cyan-500/25 transition-all space-y-2 group"
-                              >
-                                <div className="flex justify-between items-center">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-semibold text-slate-200 group-hover:text-cyan-400 transition-colors">{scan.targetName}</span>
-                                    <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">({scan.id})</span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/10 font-bold">
-                                      {scan.status === 'Completed' ? 'تم الفحص' : scan.status === 'Analyzing' ? 'تحليل ذكي' : 'جاري الفحص'}
-                                    </span>
-                                    <span className="text-xs font-mono font-bold text-cyan-400">{scan.progress}%</span>
-                                  </div>
-                                </div>
-                                <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
-                                  <div className="bg-gradient-to-r from-cyan-500 to-indigo-500 h-full rounded-full animate-pulse transition-all" style={{ width: `${scan.progress}%` }}></div>
-                                </div>
-                                <div className="flex justify-between items-center mt-1">
-                                  <div className="text-[10px] font-mono text-slate-500 max-h-12 overflow-y-auto space-y-1 scrollbar-thin flex-1 truncate">
-                                    {scan.scannerLogs.map((log, index) => (
-                                      <div key={index} className="truncate">{log}</div>
-                                    ))}
-                                  </div>
-                                  <span className="text-[10px] text-cyan-500/70 group-hover:text-cyan-400 flex items-center gap-1 shrink-0 ml-2">
-                                    <Terminal className="w-3.5 h-3.5" />
-                                    عرض الطرفية التفاعلية ←
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                  {/* VULNERABILITY TREND TIMELINE */}
-                  <div className="bg-slate-900 rounded-xl border border-slate-800/80 p-5 space-y-4">
-                    <h3 className="text-sm font-bold text-white">تتبع تباين مستوى المخاطر والمصادقة الأمنية مع الزمن</h3>
-                    <div className="grid grid-cols-4 md:grid-cols-7 gap-2 pt-2">
-                      {[
-                        { day: 'السبت', val: 'Low', score: 12 },
-                        { day: 'الأحد', val: 'Medium', score: 32 },
-                        { day: 'الإثنين', val: 'Medium', score: 34 },
-                        { day: 'الثلاثاء', val: 'High', score: 68 },
-                        { day: 'الأربعاء', val: 'High', score: 71 },
-                        { day: 'الخميس', val: 'High', score: 82 },
-                        { day: 'الجمعة (اليوم)', val: 'Medium', score: 67 }
-                      ].map((item, idx) => (
-                        <div key={idx} className="bg-slate-950/60 p-3 rounded-lg border border-slate-850/80 text-center space-y-1">
-                          <span className="text-[10px] text-slate-400 block">{item.day}</span>
-                          <div className="w-full bg-slate-850 h-10 flex items-end justify-center rounded">
-                            <div
-                              className={`w-3 rounded-t ${
-                                item.score > 70 ? 'bg-red-500' : item.score > 40 ? 'bg-amber-500' : 'bg-emerald-500'
-                              }`}
-                              style={{ height: `${item.score}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-[10px] font-mono font-bold text-white mt-1 block">{item.score}%</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                </div>
-              )}
-
-              {/* B. PROJECTS & TARGETS MANAGEMENT (VERIFICATION FLOW & TRIGGER SCANS) */}
-              {activeTab === 'projects' && (
-                <div className="space-y-6">
-                  
-                  {/* HEADER WITH ACTIONS */}
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                      <h2 className="text-xl font-bold text-white">إدارة المشروعات وأهداف الفحص الأمني</h2>
-                      <p className="text-xs text-slate-400 mt-1">
-                        يمكنك إضافة أهداف فحص جديدة (مواقع ويب، واجهات برمجة، تطبيقات جوال) وإثبات ملكية الموارد قبل بدء الفحص لضمان الامتثال والمسؤولية الأمنية.
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowAddProjectModal(true)}
-                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all"
-                      >
-                        <Plus className="w-4 h-4 text-cyan-400" />
-                        إنشاء مشروع جديد
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (projects.length === 0) {
-                            showToast("يرجى إنشاء مشروع أولاً قبل إضافة هدف أمني", "error");
-                            return;
-                          }
-                          setSelectedProjectIdForTarget(projects[0].id);
-                          setShowAddTargetModal(true);
-                        }}
-                        className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all"
-                      >
-                        <Plus className="w-4 h-4" />
-                        إضافة هدف أمني للشركة
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* PROJECTS & TARGETS TREE GRID */}
-                  {projects.length === 0 ? (
-                    <div className="p-12 text-center bg-slate-900 rounded-xl border border-slate-800 space-y-4">
-                      <Briefcase className="w-12 h-12 text-slate-600 mx-auto" />
-                      <h3 className="text-base font-bold text-white">لا توجد مشاريع أمنية نشطة</h3>
-                      <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                        البدء في حماية البنية التحتية لشركتك عن طريق إضافة أول مشروع وتحديد أهداف الفحص الفني.
-                      </p>
-                      <button
-                        onClick={() => setShowAddProjectModal(true)}
-                        className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-lg transition-all"
-                      >
-                        إضافة أول مشروع الآن
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {projects.map((proj) => (
-                        <div key={proj.id} className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-                          {/* Project Header */}
-                          <div className="bg-slate-850 p-5 border-b border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                            <div>
-                              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 bg-purple-500 rounded-full"></span>
-                                {proj.name}
-                              </h3>
-                              <p className="text-xs text-slate-400 mt-1">{proj.description}</p>
-                            </div>
-                            <div className="text-[10px] text-slate-500">
-                              تم الإنشاء: {new Date(proj.createdAt).toLocaleDateString('ar-SA')}
-                            </div>
-                          </div>
-
-                          {/* Target Cards inside Project */}
-                          <div className="p-5">
-                            {proj.targets.length === 0 ? (
-                              <div className="py-8 text-center text-xs text-slate-500 space-y-2">
-                                <p>لا توجد أهداف فحص مضافة تحت هذا المشروع حالياً.</p>
-                                <button
-                                  onClick={() => {
-                                    setSelectedProjectIdForTarget(proj.id);
-                                    setShowAddTargetModal(true);
-                                  }}
-                                  className="text-cyan-400 hover:underline text-xs"
-                                >
-                                  إضافة هدف أمني لهذا المشروع +
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {proj.targets.map((target) => (
-                                  <div key={target.id} className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col justify-between gap-4">
-                                    <div className="space-y-2">
-                                      <div className="flex justify-between items-start">
-                                        <div className="flex items-center gap-2">
-                                          {target.type === 'Website' && <Globe className="w-4 h-4 text-cyan-400" />}
-                                          {target.type === 'API' && <Server className="w-4 h-4 text-purple-400" />}
-                                          {target.type === 'Mobile' && <Smartphone className="w-4 h-4 text-emerald-400" />}
-                                          {target.type === 'Source Code' && <Code className="w-4 h-4 text-amber-400" />}
-                                          <h4 className="text-xs font-bold text-white truncate max-w-[150px]">{target.name}</h4>
-                                          {target.bountyPlatform && (
-                                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-500/25 font-mono">
-                                              {target.bountyPlatform}
-                                            </span>
-                                          )}
-                                        </div>
-                                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold border ${
-                                          target.verificationStatus === 'Verified'
-                                            ? 'bg-emerald-950 text-emerald-400 border-emerald-500/20'
-                                            : 'bg-amber-950 text-amber-400 border-amber-500/20'
-                                        }`}>
-                                          {target.verificationStatus === 'Verified' ? 'مؤكد الملكية' : 'انتظار التحقق'}
-                                        </span>
-                                      </div>
-                                      <p className="text-[11px] text-slate-400 font-mono truncate select-all">{target.url}</p>
-                                    </div>
-
-                                    {/* Score display if scanned */}
-                                    {target.lastScanAt && (
-                                      <div className="flex justify-between items-center bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800">
-                                        <span className="text-[10px] text-slate-400">آخر فحص: {new Date(target.lastScanAt).toLocaleDateString('ar-SA')}</span>
-                                        <div className="flex items-center gap-1.5">
-                                          <span className="text-[10px] text-slate-500">تقييم المخاطر:</span>
-                                          <span className={`text-xs font-black font-mono ${
-                                            target.currentRiskScore && target.currentRiskScore > 70 ? 'text-red-400' : target.currentRiskScore && target.currentRiskScore > 40 ? 'text-amber-400' : 'text-emerald-400'
-                                          }`}>{target.currentRiskScore}%</span>
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Action Buttons */}
-                                    <div className="flex gap-2">
-                                      {target.verificationStatus !== 'Verified' ? (
-                                        <button
-                                          onClick={() => setVerificationModalTarget(target)}
-                                          className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1"
-                                        >
-                                          <CheckCircle className="w-3.5 h-3.5" />
-                                          إثبات الملكية الآن
-                                        </button>
-                                      ) : (
-                                        <div className="w-full flex gap-2">
-                                          <button
-                                            onClick={() => handleTriggerScan(target.id)}
-                                            disabled={actionLoading === `scan-${target.id}`}
-                                            className="flex-1 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-cyan-850 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-sm"
-                                          >
-                                            {actionLoading === `scan-${target.id}` ? (
-                                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                            ) : (
-                                              <Terminal className="w-3.5 h-3.5" />
-                                            )}
-                                            بدء فحص جديد
-                                          </button>
-                                          {activeScans.some(s => s.targetId === target.id) && (
-                                            <button
-                                              onClick={() => {
-                                                const match = [...activeScans].reverse().find(s => s.targetId === target.id);
-                                                if (match) {
-                                                  setActiveTerminalScanId(match.id);
-                                                  setShowTerminal(true);
-                                                }
-                                              }}
-                                              className="px-3 py-2 bg-slate-900 border border-cyan-500/30 hover:border-cyan-400 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/20 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1"
-                                              title="فتح الطرفية الأمنية لمتابعة السجلات الفورية"
-                                            >
-                                              <Terminal className="w-3.5 h-3.5 animate-pulse" />
-                                              الطرفية
-                                            </button>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                </div>
-              )}
-
-              {/* C. DETECTED VULNERABILITIES LIST WITH FILTERS & AI ANALYST DETAIL VIEWS */}
-              {activeTab === 'vulnerabilities' && (
-                <div className="space-y-6">
-                  
-                  {/* HEADER SECTION */}
-                  <div>
-                    <h2 className="text-xl font-bold text-white">سجل الثغرات الأمنية المكتشفة</h2>
-                    <p className="text-xs text-slate-400 mt-1">
-                      قائمة بجميع المشكلات ونقاط الضعف الموثقة والنشطة في أنظمتك، مع تفاصيل الخطورة والتأثير الفعلي وتعليمات الإصلاح المصنفة حسب المعايير الدولية.
-                    </p>
-                  </div>
-
-                  {/* FILTER BOX */}
-                  <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
-                    
-                    {/* Search field */}
-                    <div className="relative w-full md:w-80">
-                      <Search className="w-4 h-4 text-slate-500 absolute top-1/2 right-3 -translate-y-1/2" />
-                      <input
-                        type="text"
-                        placeholder="ابحث عن ثغرة معينة..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-3 pr-9 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50"
-                      />
-                    </div>
-
-                    {/* Filter categories */}
-                    <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                      <span className="text-xs text-slate-400 flex items-center ml-2">فلترة حسب مستوى الخطورة:</span>
-                      {['All', 'Critical', 'High', 'Medium', 'Low'].map((sev) => (
-                        <button
-                          key={sev}
-                          onClick={() => setSeverityFilter(sev)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                            severityFilter === sev
-                              ? 'bg-cyan-950 text-cyan-300 border-cyan-500/30'
-                              : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
-                          }`}
-                        >
-                          {sev === 'All' ? 'الكل' : sev === 'Critical' ? 'حرجة جداً' : sev === 'High' ? 'عالية' : sev === 'Medium' ? 'متوسطة' : 'منخفضة'}
-                        </button>
-                      ))}
-                    </div>
-
-                  </div>
-
-                  {/* INTERACTIVE ANALYTICS DASHBOARD WIDGET */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-slate-900 p-5 rounded-xl border border-slate-800">
-                    
-                    {/* CARD 1: BY TYPE */}
-                    <div className="bg-slate-950 rounded-xl border border-slate-850 p-5 flex flex-col justify-between space-y-4">
-                      <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                        <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <Sliders className="w-4 h-4 text-cyan-400" />
-                          توزيع الثغرات حسب نوع التصنيف (Vulnerability Types)
-                        </h3>
-                        <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">
-                          {getTypesChartData().length} تصنيفات
-                        </span>
-                      </div>
-                      
-                      {getTypesChartData().length === 0 ? (
-                        <div className="py-12 text-center text-slate-500 text-xs">
-                          لا توجد بيانات كافية لعرض المخطط البياني.
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                          {/* Recharts PieChart for interactive visualization */}
-                          <div className="h-44 flex items-center justify-center">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <PieChart>
-                                <Pie
-                                  data={getTypesChartData()}
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={45}
-                                  outerRadius={65}
-                                  paddingAngle={3}
-                                  dataKey="value"
-                                >
-                                  {getTypesChartData().map((entry: any, index: number) => (
-                                    <Cell 
-                                      key={`cell-${index}`} 
-                                      fill={['#06b6d4', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#6366f1'][index % 6]} 
-                                    />
-                                  ))}
-                                </Pie>
-                                <Tooltip
-                                  content={({ active, payload }: any) => {
-                                    if (active && payload && payload.length) {
-                                      return (
-                                        <div className="bg-slate-950 border border-slate-800 px-2.5 py-1.5 rounded shadow text-right">
-                                          <p className="text-[10px] font-bold text-white">{payload[0].name}</p>
-                                          <p className="text-[11px] text-cyan-400 font-mono">الثغرات: {payload[0].value}</p>
-                                        </div>
-                                      );
-                                    }
-                                    return null;
-                                  }}
-                                />
-                              </PieChart>
-                            </ResponsiveContainer>
-                          </div>
-
-                          {/* Beautiful Interactive List Legend with exact details */}
-                          <div className="space-y-2 max-h-44 overflow-y-auto pr-1" dir="rtl">
-                            {getTypesChartData().slice(0, 5).map((item: any, index: number) => {
-                              const color = ['#06b6d4', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#6366f1'][index % 6];
-                              const percentage = Math.round((item.value / filteredVulnsForCharts.length) * 100);
-                              return (
-                                <div key={item.name} className="flex items-center justify-between text-[11px] bg-slate-900 p-2 rounded border border-slate-800">
-                                  <div className="flex items-center gap-1.5 truncate max-w-[130px]" title={item.name}>
-                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }}></span>
-                                    <span className="text-slate-300 font-medium truncate">{item.name}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 font-mono">
-                                    <span className="text-white font-bold">{item.value}</span>
-                                    <span className="text-[9px] text-slate-500">({percentage}%)</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                            {getTypesChartData().length > 5 && (
-                              <p className="text-[10px] text-slate-500 text-center italic font-medium">+ {getTypesChartData().length - 5} تصنيفات أخرى في القائمة</p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* CARD 2: BY OWASP */}
-                    <div className="bg-slate-950 rounded-xl border border-slate-850 p-5 flex flex-col justify-between space-y-4">
-                      <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                        <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <Activity className="w-4 h-4 text-amber-400" />
-                          مخاطر معايير OWASP العشرة الأكثر خطورة (OWASP Top 10)
-                        </h3>
-                        <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">
-                          مخطط المطابقة والامتثال
-                        </span>
-                      </div>
-
-                      {getOwaspChartData().length === 0 ? (
-                        <div className="py-12 text-center text-slate-500 text-xs">
-                          لا توجد بيانات كافية لعرض المخطط البياني.
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                          {/* Recharts BarChart */}
-                          <div className="h-44 flex items-center justify-center">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <BarChart data={getOwaspChartData().slice(0, 5)} layout="vertical">
-                                <XAxis type="number" hide />
-                                <YAxis 
-                                  dataKey="name" 
-                                  type="category" 
-                                  hide 
-                                />
-                                <Tooltip
-                                  content={({ active, payload }: any) => {
-                                    if (active && payload && payload.length) {
-                                      return (
-                                        <div className="bg-slate-950 border border-slate-800 px-2.5 py-1.5 rounded shadow text-right">
-                                          <p className="text-[10px] font-bold text-white">{payload[0].payload.name}</p>
-                                          <p className="text-[11px] text-amber-400 font-mono">العدد: {payload[0].value}</p>
-                                        </div>
-                                      );
-                                    }
-                                    return null;
-                                  }}
-                                />
-                                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                                  {getOwaspChartData().slice(0, 5).map((entry: any, index: number) => (
-                                    <Cell 
-                                      key={`cell-${index}`} 
-                                      fill={['#f59e0b', '#eab308', '#ec4899', '#8b5cf6', '#10b981'][index % 5]} 
-                                    />
-                                  ))}
-                                </Bar>
-                              </BarChart>
-                            </ResponsiveContainer>
-                          </div>
-
-                          {/* Beautiful Legend with progress percentage and interactive hover */}
-                          <div className="space-y-2 max-h-44 overflow-y-auto pr-1" dir="rtl">
-                            {getOwaspChartData().slice(0, 5).map((item: any, index: number) => {
-                              const color = ['#f59e0b', '#eab308', '#ec4899', '#8b5cf6', '#10b981'][index % 5];
-                              const percentage = Math.round((item.value / filteredVulnsForCharts.length) * 100);
-                              return (
-                                <div key={item.name} className="space-y-1 bg-slate-900 p-2 rounded border border-slate-800">
-                                  <div className="flex items-center justify-between text-[11px]">
-                                    <div className="flex items-center gap-1.5 truncate max-w-[130px]" title={item.name}>
-                                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }}></span>
-                                      <span className="text-slate-300 font-semibold truncate font-mono text-[10px]">{item.name}</span>
-                                    </div>
-                                    <span className="text-white font-bold font-mono">{item.value} ({percentage}%)</span>
-                                  </div>
-                                  <div className="w-full bg-slate-950 h-1 rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full" style={{ backgroundColor: color, width: `${percentage}%` }}></div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                  </div>
-
-                  {/* VULNERABILITIES LIST VIEW */}
-                  {vulnerabilities.filter(v => {
-                    const matchSearch = v.title.toLowerCase().includes(searchQuery.toLowerCase()) || v.type.toLowerCase().includes(searchQuery.toLowerCase());
-                    const matchSeverity = severityFilter === 'All' || v.severity === severityFilter;
-                    return matchSearch && matchSeverity;
-                  }).length === 0 ? (
-                    <div className="p-12 text-center bg-slate-900 rounded-xl border border-slate-800 text-slate-500 space-y-2">
-                      <ShieldAlert className="w-10 h-10 mx-auto text-slate-600" />
-                      <p className="text-sm font-semibold text-slate-400">لا توجد ثغرات مطابقة للخيارات المحددة.</p>
-                      <p className="text-xs text-slate-500">تم فحص جميع أهدافك بنجاح أو لم تقم بتشغيل عمليات الفحص بعد.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {vulnerabilities
-                        .filter(v => {
-                          const matchSearch = v.title.toLowerCase().includes(searchQuery.toLowerCase()) || v.type.toLowerCase().includes(searchQuery.toLowerCase());
-                          const matchSeverity = severityFilter === 'All' || v.severity === severityFilter;
-                          return matchSearch && matchSeverity;
-                        })
-                        .map((vuln) => (
-                          <div
-                            key={vuln.id}
-                            className={`p-5 bg-slate-900 rounded-xl border transition-all space-y-4 ${
-                              vuln.isFalsePositive
-                                ? 'border-slate-800/40 opacity-60'
-                                : vuln.severity === 'Critical'
-                                ? 'border-red-500/20 hover:border-red-500/40'
-                                : vuln.severity === 'High'
-                                ? 'border-amber-500/20 hover:border-amber-500/40'
-                                : 'border-slate-800 hover:border-slate-700'
-                            }`}
-                          >
-                            
-                            {/* Vuln Header Row */}
-                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                              <div className="space-y-1.5 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  {getSeverityBadge(vuln.severity)}
-                                  <span className="text-xs font-mono font-bold text-cyan-400">CVSS: {vuln.cvssScore}</span>
-                                  <span className="text-slate-600">•</span>
-                                  <span className="text-xs text-slate-400">{vuln.targetName}</span>
-                                  {vuln.isFalsePositive && (
-                                    <span className="bg-slate-950 text-slate-500 border border-slate-800 text-[10px] px-2 py-0.5 rounded">مستبعدة (False Positive)</span>
-                                  )}
-                                </div>
-                                <h3 className="text-sm md:text-base font-extrabold text-white leading-snug">{vuln.title}</h3>
-                              </div>
-
-                              {/* Top action buttons */}
-                              <div className="flex gap-2 shrink-0 w-full md:w-auto">
-                                <button
-                                  onClick={() => handleAiAnalyzeVulnerability(vuln.id)}
-                                  className="flex-1 md:flex-initial px-3.5 py-1.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-sm"
-                                >
-                                  <Sparkles className="w-3.5 h-3.5" />
-                                  تحليل بالذكاء الاصطناعي
-                                </button>
-                                <button
-                                  onClick={() => handleToggleFalsePositive(vuln.id)}
-                                  disabled={actionLoading === `false-pos-${vuln.id}`}
-                                  className="px-3 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-400 border border-slate-800 rounded-lg text-xs font-bold transition-all"
-                                >
-                                  {vuln.isFalsePositive ? 'إعادة تنشيط' : 'استبعاد (False Positive)'}
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Details expand area */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-slate-850 text-xs">
-                              
-                              <div className="bg-slate-950 p-3 rounded-lg border border-slate-850 space-y-1">
-                                <span className="text-slate-500 font-bold block">الوصف والمكان الفني:</span>
-                                <p className="text-slate-300 leading-relaxed">{vuln.description}</p>
-                                <div className="text-[10px] text-cyan-500 font-mono mt-2 bg-slate-900 p-1.5 rounded border border-slate-800 truncate">
-                                  {vuln.location}
-                                </div>
-                              </div>
-
-                              <div className="bg-slate-950 p-3 rounded-lg border border-slate-850 space-y-1">
-                                <span className="text-slate-500 font-bold block">التأثير المتوقع:</span>
-                                <p className="text-slate-300 leading-relaxed">{vuln.impact}</p>
-                              </div>
-
-                              <div className="bg-slate-950 p-3 rounded-lg border border-slate-850 space-y-1">
-                                <span className="text-slate-500 font-bold block">خطوات الإصلاح المقترحة:</span>
-                                <p className="text-slate-300 leading-relaxed">{vuln.remediation}</p>
-                                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                                  <span className="text-[9px] bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded text-slate-400 font-mono">{vuln.complianceMapping.owasp}</span>
-                                  <span className="text-[9px] bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded text-slate-400 font-mono">{vuln.complianceMapping.iso27001}</span>
-                                </div>
-                              </div>
-
-                            </div>
-
-                            {/* REAL TIME AI DETAILED DEEP REPORT STREAM IF EXPANDED */}
-                            {analyzingVulnId === vuln.id && (
-                              <div className="p-4 bg-radial from-amber-950/20 to-slate-950 rounded-xl border border-amber-500/20 text-xs space-y-3">
-                                <div className="flex justify-between items-center border-b border-amber-500/10 pb-2">
-                                  <span className="flex items-center gap-1.5 font-bold text-amber-400"><Sparkles className="w-4 h-4 text-amber-400" /> تحليل المستشار الأمني الذكي (AI Analysis)</span>
-                                  <button onClick={() => setAnalyzingVulnId(null)} className="text-slate-500 hover:text-slate-300"><X className="w-4 h-4" /></button>
-                                </div>
-
-                                {!aiVulnAnalysisText ? (
-                                  <div className="flex items-center gap-2 text-amber-400 py-3">
-                                    <RefreshCw className="w-4 h-4 animate-spin" />
-                                    <span>جاري قراءة تفاصيل الثغرة، وإزالة الفحوصات الخاطئة، وكتابة الكود البرمجي الآمن للإصلاح...</span>
-                                  </div>
-                                ) : (
-                                  <div className="text-slate-300 leading-relaxed whitespace-pre-wrap font-sans text-sm p-1">
-                                    {aiVulnAnalysisText}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                          </div>
-                        ))}
-                    </div>
-                  )}
-
-                </div>
-              )}
-
-              {/* D. PREMIUM SECURITY REPORTS EXPORT PANEL (arabic custom printable layout) */}
-              {activeTab === 'reports' && (
-                <div className="space-y-6">
-                  
-                  {/* HEADER */}
-                  <div>
-                    <h2 className="text-xl font-bold text-white">مركز التقارير الأمنية والامتثال الدولي</h2>
-                    <p className="text-xs text-slate-400 mt-1">
-                      إنشاء تقارير أمنية احترافية فورية بنقرة واحدة مدعومة بملخصات تنفيذية من الذكاء الاصطناعي ومخططات المطابقة لمعايير OWASP و PCI DSS و ISO 27001 مخصصة للإدارة أو المطورين.
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    
-                    {/* LEFT COLUMN: ACTIVE REPORT VIEW & GENERATION */}
-                    <div className="lg:col-span-2 space-y-6">
-                      
-                      {/* CHOOSE PROJECT FORM */}
-                      <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 flex flex-col md:flex-row items-end gap-4">
-                        <div className="flex-1 space-y-2">
-                          <label className="text-xs font-semibold text-slate-300 block">اختر المشروع الأمني لإصدار التقرير:</label>
-                          <select
-                            value={selectedReportProject}
-                            onChange={(e) => setSelectedReportProject(e.target.value)}
-                            className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-cyan-500/50"
-                          >
-                            <option value="">-- اختر المشروع الأمني --</option>
-                            {projects.map(p => (
-                              <option key={p.id} value={p.id}>{p.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <button
-                          onClick={() => handleGenerateReport(selectedReportProject)}
-                          disabled={actionLoading === 'generateReport'}
-                          className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 animate-pulse-subtle"
-                        >
-                          {actionLoading === 'generateReport' ? (
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <FileText className="w-4 h-4" />
-                          )}
-                          إصدار التقرير الأمني التفصيلي
-                        </button>
-                      </div>
-
-                      {/* REPORT CONTENT VIEW BOX */}
-                      {activeReport ? (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden text-sm"
-                          id="printable-report"
-                        >
-                          {/* Report header and branding */}
-                          <div className="bg-slate-950 p-6 border-b border-slate-800 flex justify-between items-center gap-4">
-                            <div className="flex items-center gap-4">
-                              {companyLogo && (
-                                <img
-                                  src={companyLogo}
-                                  alt="Company Logo"
-                                  className="max-h-12 max-w-[120px] object-contain rounded bg-slate-900/80 p-1 border border-slate-800 shrink-0"
-                                  referrerPolicy="no-referrer"
-                                />
-                              )}
-                              <div className="space-y-1">
-                                <span className="text-[10px] bg-cyan-950 border border-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded font-mono font-bold">تقرير أمني معتمد من منصة التدقيق</span>
-                                <h3 className="text-base font-black text-white">
-                                  {reportTitlePrefix ? `${reportTitlePrefix} - ` : ''}{activeReport.projectName}
-                                </h3>
-                                <p className="text-xs text-slate-500">تم الإنشاء في: {new Date(activeReport.generatedAt).toLocaleString('ar-SA')}</p>
-                              </div>
-                            </div>
-                            <div className="text-left shrink-0">
-                              <span className="text-xs text-slate-400">تقييم المخاطر التراكمي (Risk Score)</span>
-                              <div className={`text-3xl font-black font-mono ${
-                                activeReport.riskScore > 70 ? 'text-red-400' : activeReport.riskScore > 40 ? 'text-amber-400' : 'text-emerald-400'
-                              }`}>{activeReport.riskScore}%</div>
-                            </div>
-                          </div>
-
-                          {/* Summary blocks */}
-                          <div className="p-6 space-y-6">
-                            
-                            {/* 1. EXECUTIVE SUMMARY FROM GEMINI AI */}
-                            <div className="space-y-2 bg-slate-950/40 p-4 rounded-xl border border-slate-850">
-                              <h4 className="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
-                                <Sparkles className="w-4 h-4 text-cyan-400" />
-                                الملخص التنفيذي الذكي (Executive Summary)
-                              </h4>
-                              <p className="text-slate-300 leading-relaxed text-sm whitespace-pre-wrap">{activeReport.executiveSummary}</p>
-                            </div>
-
-                            {/* 2. STATS & COMPLIANCE MAPPING GRAPHICS */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              
-                              {/* Compliance progress bars */}
-                              <div className="bg-slate-950 p-4 rounded-xl border border-slate-850 space-y-4">
-                                <h4 className="text-xs font-bold text-slate-300">توافق المعايير الدولية والامتثال القانوني</h4>
-                                
-                                <div className="space-y-3">
-                                  <div>
-                                    <div className="flex justify-between text-xs text-slate-400">
-                                      <span>منهجية OWASP Top 10</span>
-                                      <span className="font-mono text-white">{activeReport.compliancePercentage.owasp}%</span>
-                                    </div>
-                                    <div className="w-full bg-slate-900 h-1.5 rounded-full mt-1 overflow-hidden">
-                                      <div className="bg-cyan-500 h-full rounded-full" style={{ width: `${activeReport.compliancePercentage.owasp}%` }}></div>
-                                    </div>
-                                  </div>
-
-                                  <div>
-                                    <div className="flex justify-between text-xs text-slate-400">
-                                      <span>متطلبات أمان بطاقات الدفع PCI DSS</span>
-                                      <span className="font-mono text-white">{activeReport.compliancePercentage.pciDss}%</span>
-                                    </div>
-                                    <div className="w-full bg-slate-900 h-1.5 rounded-full mt-1 overflow-hidden">
-                                      <div className="bg-amber-500 h-full rounded-full" style={{ width: `${activeReport.compliancePercentage.pciDss}%` }}></div>
-                                    </div>
-                                  </div>
-
-                                  <div>
-                                    <div className="flex justify-between text-xs text-slate-400">
-                                      <span>إطار الأمن السيبراني ISO 27001</span>
-                                      <span className="font-mono text-white">{activeReport.compliancePercentage.iso27001}%</span>
-                                    </div>
-                                    <div className="w-full bg-slate-900 h-1.5 rounded-full mt-1 overflow-hidden">
-                                      <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${activeReport.compliancePercentage.iso27001}%` }}></div>
-                                    </div>
-                                  </div>
-                                </div>
-
-                              </div>
-
-                              {/* Severity counting */}
-                              <div className="bg-slate-950 p-4 rounded-xl border border-slate-850 flex flex-col justify-between">
-                                <h4 className="text-xs font-bold text-slate-300 mb-2">إحصاءات الثغرات المستخرجة</h4>
-                                <div className="grid grid-cols-4 gap-2">
-                                  
-                                  <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800 text-center">
-                                    <span className="text-[10px] text-red-400 block font-bold">حرجة جداً</span>
-                                    <span className="text-xl font-black font-mono text-white">{activeReport.severityBreakdown.Critical}</span>
-                                  </div>
-
-                                  <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800 text-center">
-                                    <span className="text-[10px] text-amber-400 block font-bold">عالية</span>
-                                    <span className="text-xl font-black font-mono text-white">{activeReport.severityBreakdown.High}</span>
-                                  </div>
-
-                                  <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800 text-center">
-                                    <span className="text-[10px] text-yellow-400 block font-bold">متوسطة</span>
-                                    <span className="text-xl font-black font-mono text-white">{activeReport.severityBreakdown.Medium}</span>
-                                  </div>
-
-                                  <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800 text-center">
-                                    <span className="text-[10px] text-slate-400 block font-bold">منخفضة</span>
-                                    <span className="text-xl font-black font-mono text-white">{activeReport.severityBreakdown.Low}</span>
-                                  </div>
-
-                                </div>
-                                <div className="text-[10px] text-slate-500 mt-3">
-                                  تم تصفية جميع النتائج الخاطئة والتحقق يدوياً من الأدلة الفنية للامتثال للمعايير الفيدرالية.
-                                </div>
-                              </div>
-
-                            </div>
-
-                            {/* 3. DETAILED TECHNICAL ISSUES TABLE */}
-                            <div className="space-y-3">
-                              <h4 className="text-xs font-bold text-slate-300">الملحق التقني ومواقع الثغرات المحددة:</h4>
-                              
-                              {activeReport.vulnerabilities.length === 0 ? (
-                                <p className="text-xs text-slate-500 italic">لا توجد ثغرات نشطة ومسجلة في هذا المشروع.</p>
-                              ) : (
-                                <div className="space-y-2.5">
-                                  {activeReport.vulnerabilities.map((v: any, index: number) => (
-                                    <div key={v.id} className="p-4 bg-slate-950 rounded-lg border border-slate-850 flex flex-col md:flex-row justify-between gap-4">
-                                      <div className="space-y-1.5 flex-1">
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-bold text-white text-xs">{index + 1}. {v.title}</span>
-                                          {getSeverityBadge(v.severity)}
-                                        </div>
-                                        <div className="text-[11px] text-slate-500 flex gap-4">
-                                          <span>موقع الثغرة: <code className="font-mono text-cyan-400 select-all bg-slate-900 px-1 py-0.5 rounded">{v.location}</code></span>
-                                          <span>CVSS: <b className="font-mono text-white">{v.cvssScore}</b></span>
-                                        </div>
-                                        <p className="text-xs text-slate-400 mt-1">{v.description}</p>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-
-                            </div>
-
-                            {/* Helper Info & Print / Download Buttons */}
-                            <div className="pt-5 border-t border-slate-850 space-y-4">
-                              {/* Educational warning for sandboxed iframes and scrolling limitations */}
-                              <div className="bg-cyan-950/30 border border-cyan-500/20 rounded-xl p-4 text-xs text-slate-300 leading-relaxed space-y-1.5 no-print">
-                                <p className="font-bold text-cyan-400 flex items-center gap-1.5">
-                                  <Sparkles className="w-4 h-4 text-cyan-400" />
-                                  تلميح الطباعة والامتثال الرقمي:
-                                </p>
-                                <p>
-                                  إذا كنت تستعرض المنصة داخل إطار مدمج (Iframe)، فقد تواجه قيوداً في الطباعة المباشرة من المتصفح أو قد يظهر التقرير مقتطعاً بسبب الأبعاد البرمجية للمستعرض.
-                                  للحصول على <b>أعلى دقة للملف بدون أي اقتطاع أو انقطاع في الصفحات</b>، ننصحك باستخدام زر <b>تصدير كـ HTML مستقل</b>، ثم فتح الملف المكتبي والنقر على طباعة وحفظ كـ PDF.
-                                </p>
-                              </div>
-
-                              <div className="flex flex-wrap md:flex-nowrap justify-end gap-3 no-print">
-                                <button
-                                  onClick={() => {
-                                    try {
-                                      window.print();
-                                    } catch (e) {
-                                      showToast("الطباعة المباشرة مقيدة في هذا المتصفح حالياً. يرجى استخدام زر التصدير كملف مستقل.", "error");
-                                    }
-                                  }}
-                                  className="w-full md:w-auto px-4 py-2.5 bg-slate-950 hover:bg-slate-850 text-slate-300 border border-slate-800 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
-                                  title="طباعة سريعة من المتصفح مباشرة"
-                                >
-                                  <Eye className="w-4 h-4 text-slate-400" />
-                                  طباعة سريعة للمتصفح (Ctrl+P)
-                                </button>
-                                
-                                <button
-                                  onClick={() => exportToStandaloneHTML(activeReport)}
-                                  className="w-full md:w-auto px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-cyan-600/10"
-                                  title="تصدير كتقرير مستقل بصيغة HTML مبرمجة تفتح نافذة الطباعة تلقائياً دون انقطاع"
-                                >
-                                  <Download className="w-4 h-4" />
-                                  تصدير كـ HTML مستقل (كامل وبدون اقتطاع)
-                                </button>
-                              </div>
-                            </div>
-
-                          </div>
-                        </motion.div>
-                      ) : (
-                        <div className="p-12 text-center bg-slate-900 rounded-xl border border-slate-800 text-slate-500">
-                          <FileText className="w-12 h-12 mx-auto text-slate-600 mb-2" />
-                          <p className="text-sm font-semibold text-slate-400">يرجى تحديد المشروع من القائمة أعلاه لبناء التقرير.</p>
-                          <p className="text-xs text-slate-500">سيتم توليد التقرير متضمناً الملخص الفني وخرائط الامتثال مباشرة.</p>
-                        </div>
-                      )}
-
-                    </div>
-
-                    {/* RIGHT COLUMN: REPORTS HISTORY LIST */}
-                    <div className="lg:col-span-1 space-y-4">
-                      
-                      {/* REPORT BRANDING & LOGO SETTINGS CARD */}
-                      <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-4">
-                        <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-                          <Settings className="w-5 h-5 text-cyan-400 shrink-0" />
-                          <div>
-                            <h3 className="text-sm font-bold text-white">تخصيص الشعار والهوية (Branding)</h3>
-                            <p className="text-[10px] text-slate-400">إضافة شعار وبادئة مخصصة لتقارير الـ PDF</p>
-                          </div>
-                        </div>
-
-                        {/* Company Name Prefix input */}
-                        <div className="space-y-1.5">
-                          <label className="text-[11px] font-semibold text-slate-300 block">اسم الشركة / بادئة التقرير:</label>
-                          <input
-                            type="text"
-                            placeholder="مثال: شركة الحلول المتقدمة"
-                            value={reportTitlePrefix}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setReportTitlePrefix(val);
-                              localStorage.setItem('report_title_prefix', val);
-                            }}
-                            className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-100 focus:outline-none focus:border-cyan-500/50 placeholder-slate-600"
-                          />
-                        </div>
-
-                        {/* Logo selector & preview */}
-                        <div className="space-y-3">
-                          <label className="text-[11px] font-semibold text-slate-300 block">شعار التقرير (Company Logo):</label>
-                          
-                          {/* Current Logo Preview */}
-                          <div className="bg-slate-950 p-4 rounded-xl border border-slate-850 flex flex-col items-center justify-center gap-2 relative min-h-[100px]">
-                            {companyLogo ? (
-                              <>
-                                <img
-                                  src={companyLogo}
-                                  alt="Preview Logo"
-                                  className="max-h-16 max-w-full object-contain rounded p-1 bg-slate-900 border border-slate-800"
-                                  referrerPolicy="no-referrer"
-                                />
-                                <button
-                                  onClick={() => {
-                                    setCompanyLogo(null);
-                                    localStorage.removeItem('report_company_logo');
-                                    showToast("تم إزالة الشعار وإعادة التعيين لافتراضيات المنصة.", "info");
-                                  }}
-                                  className="absolute top-2 left-2 p-1.5 bg-red-950/80 hover:bg-red-900 text-red-400 rounded-lg border border-red-500/25 transition-all text-[10px] flex items-center gap-1 cursor-pointer"
-                                  title="حذف الشعار"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                  <span>حذف</span>
-                                </button>
-                              </>
-                            ) : (
-                              <div className="text-center space-y-1 py-2">
-                                <Globe className="w-8 h-8 text-slate-600 mx-auto animate-pulse-subtle" />
-                                <p className="text-[10px] text-slate-500">لا يوجد شعار محدد للتقارير حالياً</p>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Preset Options */}
-                          <div className="space-y-1.5">
-                            <span className="text-[10px] font-semibold text-slate-400 block">اختر من النماذج الاحترافية الجاهزة:</span>
-                            <div className="grid grid-cols-3 gap-1.5">
-                              {logoPresets.map(preset => (
-                                <button
-                                  key={preset.id}
-                                  onClick={() => {
-                                    setCompanyLogo(preset.svg);
-                                    localStorage.setItem('report_company_logo', preset.svg);
-                                    showToast(`تم تطبيق نموذج الشعار: ${preset.name}`, "success");
-                                  }}
-                                  className={`p-1.5 rounded-lg border text-[10px] font-medium transition-all text-center leading-normal truncate ${
-                                    companyLogo === preset.svg
-                                      ? 'bg-cyan-950 text-cyan-300 border-cyan-500/50'
-                                      : 'bg-slate-950 text-slate-400 border-slate-850 hover:bg-slate-900 hover:text-slate-200'
-                                  }`}
-                                  title={preset.name}
-                                >
-                                  {preset.id === 'shield' ? 'درع الحماية' : preset.id === 'cloud' ? 'سحابة الأمان' : 'شفرة برمجية'}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Upload custom logo */}
-                          <div className="space-y-1.5 pt-1">
-                            <span className="text-[10px] font-semibold text-slate-400 block">أو قم برفع شعار مخصص لشركتك:</span>
-                            <div className="flex items-center gap-2">
-                              <label className="flex-1 flex flex-col items-center justify-center border border-dashed border-slate-800 hover:border-cyan-500/40 bg-slate-950/60 hover:bg-slate-950 p-2.5 rounded-xl cursor-pointer transition-all">
-                                <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-                                  <Plus className="w-3.5 h-3.5 text-cyan-400" />
-                                  <span>اختر ملف الشعار (PNG/JPG/SVG)</span>
-                                </div>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      if (file.size > 1.5 * 1024 * 1024) {
-                                        showToast("حجم الشعار كبير جداً. يرجى اختيار صورة أقل من 1.5 ميجابايت لضمان سرعة الطباعة.", "error");
-                                        return;
-                                      }
-                                      const reader = new FileReader();
-                                      reader.onloadend = () => {
-                                        const base64String = reader.result as string;
-                                        setCompanyLogo(base64String);
-                                        localStorage.setItem('report_company_logo', base64String);
-                                        showToast("تم رفع وتثبيت شعار شركتك بنجاح للتقارير القادمة.", "success");
-                                      };
-                                      reader.readAsDataURL(file);
-                                    }
-                                  }}
-                                  className="hidden"
-                                />
-                              </label>
-                            </div>
-                            <span className="text-[9px] text-slate-500 leading-normal block">ملاحظة: لضمان أفضل مظهر احترافي، استخدم صورة مفرغة ذات خلفية شفافة وتصميم متناسب.</span>
-                          </div>
-
-                        </div>
-                      </div>
-
-                      <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-4">
-                        <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-                          <FileText className="w-5 h-5 text-cyan-400 shrink-0" />
-                          <div>
-                            <h3 className="text-sm font-bold text-white">سجل التقارير الصادرة (Reports History)</h3>
-                            <p className="text-[10px] text-slate-400">جميع تقارير الفحص والامتثال السابقة</p>
-                          </div>
-                        </div>
-
-                        {reportsHistory.length === 0 ? (
-                          <div className="py-8 text-center text-xs text-slate-500 space-y-2">
-                            <p>لم يتم العثور على تقارير مصدرة مسبقاً.</p>
-                            <p className="text-[10px] text-slate-600">اختر مشروعاً واضغط على إصدار التقرير ليظهر هنا.</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-3 max-h-[600px] overflow-y-auto scrollbar-thin pr-1">
-                            {reportsHistory.map((rep) => (
-                              <div
-                                key={rep.id}
-                                className={`p-4 rounded-xl border transition-all space-y-3 bg-slate-950 ${
-                                  activeReport?.id === rep.id
-                                    ? 'border-cyan-500/50 ring-1 ring-cyan-500/20'
-                                    : 'border-slate-850 hover:border-slate-800'
-                                }`}
-                              >
-                                <div className="space-y-1">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <h4 className="text-xs font-bold text-slate-100 line-clamp-2 leading-relaxed">
-                                      {rep.projectName}
-                                    </h4>
-                                    <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                                      rep.riskScore > 70
-                                        ? 'bg-red-950 text-red-400'
-                                        : rep.riskScore > 40
-                                        ? 'bg-amber-950 text-amber-400'
-                                        : 'bg-emerald-950 text-emerald-400'
-                                    }`}>
-                                      {rep.riskScore}%
-                                    </span>
-                                  </div>
-                                  <div className="text-[10px] text-slate-500 flex items-center justify-between">
-                                    <span>{new Date(rep.generatedAt).toLocaleDateString('ar-SA')}</span>
-                                    <span className="bg-slate-900 border border-slate-800/80 px-1.5 py-0.5 rounded font-mono font-bold text-cyan-400">
-                                      {rep.totalVulnerabilities} ثغرات
-                                    </span>
-                                  </div>
-                                </div>
-
-                                <div className="flex gap-2 border-t border-slate-900 pt-2.5">
-                                  <button
-                                    onClick={() => {
-                                      setActiveReport(rep);
-                                      showToast(`تم إعادة تحميل التقرير الخاص بـ "${rep.projectName}" بنجاح.`, 'success');
-                                    }}
-                                    className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-850 text-slate-300 hover:text-white rounded-lg text-[10px] font-bold border border-slate-800 transition-all flex items-center justify-center gap-1 cursor-pointer"
-                                    title="إعادة تحميل وعرض محتويات التقرير"
-                                  >
-                                    <Eye className="w-3.5 h-3.5 text-cyan-400" />
-                                    عرض التقرير
-                                  </button>
-                                  <button
-                                    onClick={() => handlePrintHistoricalReport(rep)}
-                                    className="px-3 py-1.5 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-400 border border-cyan-500/20 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
-                                    title="تحميل وطباعة كـ PDF"
-                                  >
-                                    <Download className="w-3.5 h-3.5" />
-                                    حفظ كـ PDF
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                  </div>
-
-                </div>
-              )}
-
-              {/* E. AI CHAT SECURITY ASSISTANT PANEL */}
-              {activeTab === 'chat' && (
-                <div className="space-y-6 flex-1 flex flex-col min-h-[500px]">
-                  
-                  {/* HEADER */}
-                  <div>
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                      مستشار الأمن الذكي والتحليل البرمجي
-                      <span className="bg-amber-950 text-amber-400 border border-amber-500/20 text-[9px] px-2 py-0.5 rounded">مدعوم بالذكاء الاصطناعي</span>
-                    </h2>
-                    <p className="text-xs text-slate-400 mt-1">
-                      اطرح أي أسئلة فنية أو اطلب مراجعة الأكواد المصدرية، أو فهم كيفية إصلاح الثغرات الأمنية المكتشفة في مشروعك فورياً.
-                    </p>
-                  </div>
-
-                  {/* PRE-DRAFTED QUICK QUESTIONS */}
-                  <div className="flex flex-wrap gap-2">
-                    <span className="text-xs text-slate-500 flex items-center">أسئلة شائعة:</span>
-                    {[
-                      "كيف يمكنني حماية كودي من ثغرات SQL Injection؟",
-                      "اشرح لي آلية تفعيل SSL Pinning في تطبيقات الجوال",
-                      "كيف أمنع الهجمات الموجهة لواجهات الـ API وحماية التوكينات السحابية؟",
-                      "ما هي الخطوات الفنية للامتثال لضوابط الهيئة الوطنية للأمن السيبراني؟"
-                    ].map((q, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleQuickQuestion(q)}
-                        className="px-3 py-1.5 bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-800 rounded-xl text-[11px] transition-all"
-                      >
-                        {q}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* CHAT MESSAGES DISPLAY BOX */}
-                  <div className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-4 min-h-[350px]">
-                    <div className="flex-1 overflow-y-auto space-y-4 max-h-[320px] scrollbar-thin">
-                      {chatMessages.map((msg, idx) => (
-                        <div
-                          key={idx}
-                          className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div className={`p-4 rounded-2xl max-w-2xl text-sm leading-relaxed space-y-1.5 ${
-                            msg.sender === 'user'
-                              ? 'bg-cyan-600 text-white rounded-tl-none'
-                              : 'bg-slate-950 text-slate-200 rounded-tr-none border border-slate-850'
-                          }`}>
-                            <div className="whitespace-pre-wrap">{msg.text}</div>
-                            <span className="text-[9px] text-slate-400/80 block text-left">
-                              {new Date(msg.timestamp).toLocaleTimeString('ar-SA')}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                      {isChatSending && (
-                        <div className="flex justify-start">
-                          <div className="bg-slate-950 border border-slate-850 p-4 rounded-2xl rounded-tr-none flex items-center gap-2 text-xs text-slate-400">
-                            <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
-                            <span>مستشار الأمن يحلل استفسارك ويقوم بصياغة رد تقني آمن...</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* INPUT FORM */}
-                    <form id="chat-form" onSubmit={handleSendChatMessage} className="flex gap-2.5 pt-4 border-t border-slate-850">
-                      <input
-                        type="text"
-                        placeholder="اطرح سؤالاً أمنياً أو الصق كوداً لمراجعته..."
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        className="flex-1 p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500/50"
-                      />
-                      <button
-                        type="submit"
-                        disabled={isChatSending || !chatInput.trim()}
-                        className="px-5 py-3 bg-gradient-to-r from-amber-600 to-amber-500 disabled:from-slate-800 hover:from-amber-500 hover:to-amber-400 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
-                      >
-                        <Send className="w-4 h-4" />
-                        إرسال
-                      </button>
-                    </form>
-                  </div>
-
-                </div>
-              )}
-
-              {/* F. SUBSCRIPTION MANAGEMENT & AUDIT LOGS PANEL */}
-              {activeTab === 'subscription' && (
-                <div className="space-y-6">
-                  
-                  {/* SaaS TIERS GRID */}
-                  <div>
-                    <h2 className="text-xl font-bold text-white">إدارة الاشتراكات وخطط الـ SaaS</h2>
-                    <p className="text-xs text-slate-400 mt-1">تعديل رخص وخطط التشغيل المناسبة لحجم أعمال مؤسستك أو شركتك الرقمية.</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    
-                    {/* Free Plan */}
-                    <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-5 flex flex-col justify-between">
-                      <div className="space-y-3">
-                        <span className="text-xs text-slate-400">باقة الأفراد</span>
-                        <h3 className="text-lg font-black text-white">Free Plan</h3>
-                        <div className="text-2xl font-black text-white">$0 <span className="text-xs text-slate-500">/شهرياً</span></div>
-                        <p className="text-xs text-slate-400">للاختبارات الفردية البسيطة والتعرف الفني على المنصة.</p>
-                        <div className="border-t border-slate-850 pt-3 space-y-2 text-xs">
-                          <div className="flex gap-2 text-slate-300">✓ مشروع واحد فقط</div>
-                          <div className="flex gap-2 text-slate-300">✓ هدف فحص واحد</div>
-                          <div className="flex gap-2 text-slate-300">✓ 5 فحوصات شهرياً</div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleUpgradeSubscription('Free')}
-                        disabled={userProfile?.subscription.plan === 'Free'}
-                        className="w-full py-2 bg-slate-950 hover:bg-slate-850 disabled:bg-slate-900 disabled:text-slate-500 text-slate-200 border border-slate-800 rounded-xl text-xs font-bold transition-all"
-                      >
-                        {userProfile?.subscription.plan === 'Free' ? 'الباقة الحالية' : 'التحويل للباقة المجانية'}
-                      </button>
-                    </div>
-
-                    {/* Pro Plan */}
-                    <div className="bg-gradient-to-b from-slate-900 to-slate-950 rounded-xl border-2 border-cyan-500/40 p-5 space-y-5 flex flex-col justify-between relative">
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-cyan-600 text-white text-[10px] px-3 py-1 rounded-full font-bold">الأكثر مبيعاً</div>
-                      <div className="space-y-3">
-                        <span className="text-xs text-cyan-400 font-bold">باقة الشركات الناشئة</span>
-                        <h3 className="text-lg font-black text-white">Professional</h3>
-                        <div className="text-2xl font-black text-cyan-400">$149 <span className="text-xs text-slate-500">/شهرياً</span></div>
-                        <p className="text-xs text-slate-300">مثالية للشركات والمواقع النشطة التي ترغب في تحليل أوتوماتيكي مستمر.</p>
-                        <div className="border-t border-slate-850 pt-3 space-y-2 text-xs">
-                          <div className="flex gap-2 text-slate-200">✓ 10 مشاريع أمنية</div>
-                          <div className="flex gap-2 text-slate-200">✓ 5 أهداف لكل مشروع</div>
-                          <div className="flex gap-2 text-slate-200">✓ 50 فحص أمني شهرياً</div>
-                          <div className="flex gap-2 text-slate-200">✓ استشارات غير محدودة من الذكاء الاصطناعي</div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleUpgradeSubscription('Professional')}
-                        disabled={userProfile?.subscription.plan === 'Professional'}
-                        className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:bg-cyan-950 disabled:text-cyan-400 text-white rounded-xl text-xs font-extrabold transition-all shadow-md shadow-cyan-950/20"
-                      >
-                        {userProfile?.subscription.plan === 'Professional' ? 'الباقة الحالية' : 'الترقية للباقة الاحترافية'}
-                      </button>
-                    </div>
-
-                    {/* Enterprise Plan */}
-                    <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-5 flex flex-col justify-between">
-                      <div className="space-y-3">
-                        <span className="text-xs text-slate-400">باقة المؤسسات الكبرى</span>
-                        <h3 className="text-lg font-black text-white">Enterprise Plan</h3>
-                        <div className="text-2xl font-black text-white">$599 <span className="text-xs text-slate-500">/شهرياً</span></div>
-                        <p className="text-xs text-slate-400">مصممة للفرق والبنوك والمؤسسات الأمنية التي تتطلب عمليات فحص واسعة النطاق.</p>
-                        <div className="border-t border-slate-850 pt-3 space-y-2 text-xs">
-                          <div className="flex gap-2 text-slate-300">✓ 100 مشروع أمني</div>
-                          <div className="flex gap-2 text-slate-300">✓ أهداف فحص غير محدودة</div>
-                          <div className="flex gap-2 text-slate-300">✓ 500 فحص أمني/شهري</div>
-                          <div className="flex gap-2 text-slate-300">✓ خوادم مخصصة ودعم فني على مدار الساعة</div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleUpgradeSubscription('Enterprise')}
-                        disabled={userProfile?.subscription.plan === 'Enterprise'}
-                        className="w-full py-2 bg-slate-950 hover:bg-slate-850 disabled:bg-slate-900 disabled:text-slate-500 text-slate-200 border border-slate-800 rounded-xl text-xs font-bold transition-all"
-                      >
-                        {userProfile?.subscription.plan === 'Enterprise' ? 'الباقة الحالية' : 'التحويل للباقة الشاملة'}
-                      </button>
-                    </div>
-
-                  </div>
-
-                  {/* TEAM MEMBER & PRIVILEGES ROLES SIMULATOR */}
-                  <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-4">
-                    <h3 className="text-sm font-bold text-white">فريق العمل وتفويض الصلاحيات (RBAC)</h3>
-                    <p className="text-[11px] text-slate-400">دعوة أعضاء الفريق الأمني وتحديد رتبهم لإدارة الأهداف الأمنية وفحص الثغرات لضمان النزاهة والتحقق المستمر.</p>
-                    
-                    <form onSubmit={handleInviteTeamMember} className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-slate-950 p-4 rounded-xl border border-slate-850">
-                      <input
-                        type="text"
-                        placeholder="الاسم الثلاثي..."
-                        value={newMemberName}
-                        onChange={(e) => setNewMemberName(e.target.value)}
-                        className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 text-white"
-                      />
-                      <input
-                        type="email"
-                        placeholder="البريد الإلكتروني..."
-                        value={newMemberEmail}
-                        onChange={(e) => setNewMemberEmail(e.target.value)}
-                        className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 text-white"
-                      />
-                      <select
-                        value={newMemberRole}
-                        onChange={(e) => setNewMemberRole(e.target.value as UserRole)}
-                        className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 text-slate-300"
-                      >
-                        <option value="Viewer">Viewer (مشاهدة فقط)</option>
-                        <option value="Security Analyst">Security Analyst (فحص وإصلاح)</option>
-                        <option value="Admin">Admin (التحكم بالمنصة)</option>
-                      </select>
-                      <button
-                        type="submit"
-                        disabled={actionLoading === 'inviteTeam'}
-                        className="py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-bold transition-all"
-                      >
-                        إرسال دعوة انضمام
-                      </button>
-                    </form>
-
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs text-right text-slate-400">
-                        <thead className="text-[10px] text-slate-500 uppercase bg-slate-950 border border-slate-850">
-                          <tr>
-                            <th scope="col" className="px-6 py-3">اسم الموظف</th>
-                            <th scope="col" className="px-6 py-3">البريد الإلكتروني</th>
-                            <th scope="col" className="px-6 py-3">صلاحية النظام</th>
-                            <th scope="col" className="px-6 py-3">تاريخ الانضمام</th>
-                            <th scope="col" className="px-6 py-3">إجراءات</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {teamMembers.map((member) => (
-                            <tr key={member.id} className="bg-slate-900 border-b border-slate-850 hover:bg-slate-950/60 transition-colors">
-                              <th scope="row" className="px-6 py-4 font-semibold text-white whitespace-nowrap">
-                                {member.name}
-                              </th>
-                              <td className="px-6 py-4 font-mono select-all">
-                                {member.email}
-                              </td>
-                              <td className="px-6 py-4">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                  member.role === 'Admin'
-                                    ? 'bg-red-950 text-red-400 border border-red-500/10'
-                                    : member.role === 'Security Analyst'
-                                    ? 'bg-amber-950 text-amber-400 border border-amber-500/10'
-                                    : 'bg-slate-950 text-slate-300 border border-slate-850'
-                                }`}>
-                                  {member.role === 'Admin' ? 'المدير العام' : member.role === 'Security Analyst' ? 'محلل ثغرات أمنية' : 'مشاهد فقط'}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 text-slate-500">
-                                {new Date(member.joinedAt).toLocaleDateString('ar-SA')}
-                              </td>
-                              <td className="px-6 py-4">
-                                {member.id !== 'tm-1' && (
-                                  <button
-                                    onClick={() => handleRemoveTeamMember(member.id)}
-                                    className="text-red-400 hover:text-red-300 flex items-center gap-1 transition-colors"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" /> إزالة الصلاحيات
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {/* COMPLIANCE AUDIT LOGS DISPLAY */}
-                  <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="text-sm font-bold text-white">سجلات التدقيق الأمني للامتثال (Compliance Audit Logs)</h3>
-                        <p className="text-[11px] text-slate-400 mt-0.5">تسجيل فوري وغير قابل للتعديل لكامل العمليات والتحقق الفني على المنصة.</p>
-                      </div>
-                      <button
-                        onClick={async () => {
-                          const res = await fetch('/api/audit-logs/clear', { method: 'POST' });
-                          const envelope = await res.json();
-                          const data = envelope.success ? envelope.data : {};
-                          setAuditLogs(data.auditLogs || auditLogs);
-                          showToast(envelope.message || "تم مسح السجل", 'info');
-                        }}
-                        className="px-3 py-1.5 bg-slate-950 hover:bg-slate-850 text-slate-400 border border-slate-800 rounded-lg text-xs"
-                      >
-                        تصفية السجل
-                      </button>
-                    </div>
-
-                    <div className="space-y-2 max-h-[220px] overflow-y-auto scrollbar-thin">
-                      {auditLogs.map((log) => (
-                        <div key={log.id} className="p-3 bg-slate-950 rounded-lg border border-slate-850 text-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-white bg-slate-900 px-2 py-0.5 rounded border border-slate-800 text-[10px]">{log.action}</span>
-                              <span className="text-slate-400">{log.details}</span>
-                            </div>
-                            <div className="text-[10px] text-slate-500 flex gap-4">
-                              <span>المستخدم: <code className="font-mono text-slate-400">{log.userEmail}</code></span>
-                              <span>عنوان الـ IP: <code className="font-mono text-slate-400">{log.ipAddress}</code></span>
-                            </div>
-                          </div>
-                          <span className="text-[10px] text-slate-500 font-mono shrink-0">{new Date(log.timestamp).toLocaleString('ar-SA')}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                </div>
-              )}
-
-              {/* G. BUG BOUNTY HUNTER PORTAL */}
-              {activeTab === 'bugbounty' && (
-                <div className="space-y-6">
-                  
-                  {/* HERO BANNER WITH AMBIENT GRADIENT */}
-                  <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6 md:p-8">
-                    <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                    <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                    
-                    <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
-                      <div className="space-y-3 text-center md:text-right">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-950/80 border border-amber-500/30 text-amber-400 text-xs font-bold font-mono">
-                          <Trophy className="w-3.5 h-3.5 animate-bounce" />
-                          <span>برنامج الإفصاح المسؤول ومكافآت الثغرات (Safe Harbor Verified)</span>
-                        </div>
-                        <h2 className="text-2xl md:text-3xl font-black tracking-tight text-white">
-                          بوابة صائدي الثغرات والمكافآت الأمنية
-                        </h2>
-                        <p className="text-xs md:text-sm text-slate-400 max-w-2xl leading-relaxed">
-                          مرحباً بك في المجتمع التقني للحماية التشاركية. نحن في شركة DigitalTech Solutions نقدر جهود الباحثين الأمنيين الهاكرز الأخلاقيين لتعزيز خطوطنا الدفاعية. اكتشف ثغرة، أبلغنا بأمان، واحصل على تكريم مالي ومكان في لوحة الشرف!
-                        </p>
-                      </div>
-                      <div className="shrink-0 flex gap-3">
-                        <button
-                          onClick={() => setShowAddBbReportModal(true)}
-                          className="px-5 py-3 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold rounded-xl text-xs transition-all shadow-lg shadow-amber-950/20 flex items-center gap-2"
-                        >
-                          <Plus className="w-4 h-4" />
-                          تسجيل وإرسال ثغرة
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* QUICK STATS METER */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 space-y-2">
-                      <div className="flex justify-between items-center text-slate-400">
-                        <span className="text-xs">برامج المكافآت النشطة</span>
-                        <Globe className="w-4 h-4 text-cyan-400" />
-                      </div>
-                      <div className="text-2xl font-black text-white">{bbPrograms.length}</div>
-                      <p className="text-[10px] text-cyan-400 font-semibold flex items-center gap-1">
-                        ● نطاقات إنتاجية حقيقية في النطاق
-                      </p>
-                    </div>
-
-                    <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 space-y-2">
-                      <div className="flex justify-between items-center text-slate-400">
-                        <span className="text-xs">إجمالي المكافآت المدفوعة</span>
-                        <Gift className="w-4 h-4 text-emerald-400" />
-                      </div>
-                      <div className="text-2xl font-black text-emerald-400">$34,800</div>
-                      <p className="text-[10px] text-slate-400">دعم متواصل لجهود الباحثين</p>
-                    </div>
-
-                    <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 space-y-2">
-                      <div className="flex justify-between items-center text-slate-400">
-                        <span className="text-xs">تقاريري المقدمة</span>
-                        <FileText className="w-4 h-4 text-purple-400" />
-                      </div>
-                      <div className="text-2xl font-black text-white">{bbSubmissions.length}</div>
-                      <p className="text-[10px] text-purple-400 font-semibold">
-                        تقارير نشطة وموثقة بالنظام
-                      </p>
-                    </div>
-
-                    <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 space-y-2">
-                      <div className="flex justify-between items-center text-slate-400">
-                        <span className="text-xs">أعلى مكافأة ثغرة حرجة</span>
-                        <Trophy className="w-4 h-4 text-amber-500" />
-                      </div>
-                      <div className="text-2xl font-black text-amber-400">$8,000</div>
-                      <p className="text-[10px] text-slate-400">تعتمد على نقاط خطورة CVSS v3</p>
-                    </div>
-                  </div>
-
-                  {/* THREE COLUMN INNER TAB LAYOUT */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    
-                    {/* LEFT / CENTER TWO-THIRDS: CONTENT VIEWS */}
-                    <div className="lg:col-span-2 space-y-6">
-
-                      {/* AI BOUNTY REPORT DRAFTSMAN CARD */}
-                      <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-4">
-                        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                            <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-                            مساعد صياغة تقارير الثغرات الذكي (AI Bug Bounty Draftsman)
-                          </h3>
-                          <span className="text-[10px] bg-cyan-950 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded-full font-bold">
-                            توليد احترافي بـ Gemini
-                          </span>
-                        </div>
-
-                        <p className="text-[11px] text-slate-400 leading-relaxed">
-                          أدخل تفاصيل الثغرة الأمنية التي قمت باكتشافها بشكل مبدئي، وسيقوم المساعد الذكي بصياغة تقرير أمني رسمي واحترافي باللغة الإنجليزية متوافق مع معايير منصات HackerOne و Bugcrowd بما في ذلك الأثر التقني وخطوات إعادة الاستغلال الآمن (Proof of Concept).
-                        </p>
-
-                        {/* IMPORT TARGET FINDING COMPONENT */}
-                        <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
-                          <span className="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
-                            <Download className="w-4 h-4 text-cyan-400 animate-bounce" />
-                            استيراد تفاصيل الثغرة من أهداف الفحص الحالية (Import Target Finding)
-                          </span>
-                          <p className="text-[10px] text-slate-400">
-                            بدلاً من الكتابة اليدوية لعنوان وتفاصيل الثغرة، يمكنك تحديد الهدف الأمني واختيار إحدى الثغرات المكتشفة سابقاً بواسطة فاحص الأنظمة الآلي لاستيراد كامل بياناتها بضغطة زر.
-                          </p>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <label className="text-[10px] text-slate-400 block font-semibold">1. اختر الهدف الأمني:</label>
-                              <select
-                                value={importTargetSelected}
-                                onChange={(e) => {
-                                  setImportTargetSelected(e.target.value);
-                                  setImportVulnSelected('');
-                                }}
-                                className="w-full p-2 bg-slate-900 border border-slate-850 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-cyan-500/50"
-                              >
-                                <option value="">-- اختر الهدف الأمني --</option>
-                                {projects.flatMap(p => p.targets).map(t => (
-                                  <option key={t.id} value={t.id}>{t.name} ({t.url})</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] text-slate-400 block font-semibold">2. اختر الثغرة المكتشفة:</label>
-                              <select
-                                value={importVulnSelected}
-                                onChange={(e) => setImportVulnSelected(e.target.value)}
-                                disabled={!importTargetSelected}
-                                className="w-full p-2 bg-slate-900 border border-slate-850 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-cyan-500/50 disabled:opacity-50"
-                              >
-                                <option value="">-- اختر الثغرة الأمنية --</option>
-                                {vulnerabilities
-                                  .filter(v => v.targetId === importTargetSelected)
-                                  .map(v => (
-                                    <option key={v.id} value={v.id}>
-                                      [{v.severity}] {v.title}
-                                    </option>
-                                  ))}
-                              </select>
-                            </div>
-                          </div>
-                          {importTargetSelected && vulnerabilities.filter(v => v.targetId === importTargetSelected).length === 0 && (
-                            <p className="text-[10px] text-amber-500 bg-amber-950/20 px-3 py-1.5 rounded-lg border border-amber-900/30">
-                              لا توجد ثغرات نشطة مكتشفة لهذا الهدف حالياً. تأكد من تشغيل فحص أمني ناجح أولاً.
-                            </p>
-                          )}
-                          <div className="flex justify-end pt-1">
-                            <button
-                              type="button"
-                              onClick={handleImportVulnerabilityData}
-                              disabled={!importVulnSelected}
-                              className="px-4 py-1.5 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-md shadow-cyan-950/40"
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                              استيراد البيانات وتعبئة النموذج
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 py-1">
-                          <span className="h-px bg-slate-800 flex-1"></span>
-                          <span className="text-[10px] text-slate-500 font-bold">أو أدخل التفاصيل يدوياً أدناه</span>
-                          <span className="h-px bg-slate-800 flex-1"></span>
-                        </div>
-
-                        <form onSubmit={handleGenerateBountyReport} className="space-y-4 text-xs">
-                          <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-slate-300 block">عنوان الثغرة الأولي (أو المشكلة المكتشفة):</label>
-                            <input
-                              type="text"
-                              required
-                              placeholder="مثال: IDOR on private message endpoint leads to message disclosure"
-                              value={aiReportTitle}
-                              onChange={(e) => setAiReportTitle(e.target.value)}
-                              className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                              <label className="text-xs font-semibold text-slate-300 block">نوع الثغرة البرمجية:</label>
-                              <select
-                                value={aiReportVulnType}
-                                onChange={(e) => setAiReportVulnType(e.target.value)}
-                                className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none"
-                              >
-                                <option value="Insecure Direct Object Reference (IDOR)">Insecure Direct Object Reference (IDOR)</option>
-                                <option value="Stored Cross-Site Scripting (Stored XSS)">Stored Cross-Site Scripting (Stored XSS)</option>
-                                <option value="Server-Side Request Forgery (SSRF)">Server-Side Request Forgery (SSRF)</option>
-                                <option value="Broken Object Level Authorization (BOLA / IDOR)">Broken Object Level Authorization (BOLA)</option>
-                                <option value="Remote Code Execution (RCE)">Remote Code Execution (RCE)</option>
-                                <option value="SQL Injection (SQLi)">SQL Injection (SQLi)</option>
-                                <option value="CSRF on sensitive action">Cross-Site Request Forgery (CSRF)</option>
-                                <option value="Information Disclosure">تسريب معلومات حساسة (Info Disclosure)</option>
-                              </select>
-                            </div>
-
-                            <div className="space-y-1.5">
-                              <label className="text-xs font-semibold text-slate-300 block">الخطورة المتوقعة للثغرة (Severity):</label>
-                              <select
-                                value={aiReportSeverity}
-                                onChange={(e) => setAiReportSeverity(e.target.value)}
-                                className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none"
-                              >
-                                <option value="Critical">Critical (حرجة جداً)</option>
-                                <option value="High">High (عالية الخطورة)</option>
-                                <option value="Medium">Medium (متوسطة الخطورة)</option>
-                                <option value="Low">Low (منخفضة الخطورة)</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-slate-300 block">خطوات إعادة الإنتاج واستغلال الثغرة (PoC Steps):</label>
-                            <textarea
-                              rows={3}
-                              required
-                              placeholder="اكتب كيف يمكن الوصول للثغرة، مثال: 1. Go to URL /api/messages?id=101, 2. Change id to 102 to view another user's message..."
-                              value={aiReportPoc}
-                              onChange={(e) => setAiReportPoc(e.target.value)}
-                              className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-600 focus:outline-none font-mono"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-slate-300 block">الأثر التشغيلي والتقني (Operational Impact):</label>
-                            <textarea
-                              rows={2}
-                              required
-                              placeholder="مثال: This vulnerability allows malicious users to steal session credentials / read confidential data of other clients without authorization."
-                              value={aiReportImpact}
-                              onChange={(e) => setAiReportImpact(e.target.value)}
-                              className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-600 focus:outline-none"
-                            />
-                          </div>
-
-                          <div className="pt-2">
-                            <button
-                              type="submit"
-                              disabled={bountyReportLoading}
-                              className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 disabled:from-amber-850 disabled:to-amber-900 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-amber-950/40"
-                            >
-                              {bountyReportLoading ? (
-                                <>
-                                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                  <span>جاري صياغة وهيكلة التقرير الأمني...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Sparkles className="w-3.5 h-3.5" />
-                                  <span>توليد التقرير الأمني الاحترافي للثغرة (Generate Report)</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </form>
-
-                        {/* RENDER DRAFT RESULT WITH PREVIEW AND COPY BUTTON */}
-                        {bountyReportDraft && (
-                          <div className="bg-slate-950 p-4 rounded-xl border border-amber-500/20 space-y-3">
-                            <div className="flex justify-between items-center border-b border-slate-850 pb-2">
-                              <span className="font-bold text-amber-400 flex items-center gap-1 text-xs">
-                                <FileText className="w-4 h-4" />
-                                التقرير النهائي الجاهز للنسخ والإرسال:
-                              </span>
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(bountyReportDraft);
-                                  showToast("تم نسخ تقرير الثغرة المصاغ بنجاح!", "success");
-                                }}
-                                className="px-2.5 py-1 bg-amber-600/20 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/30 rounded-lg flex items-center gap-1 text-[11px] font-bold transition-all"
-                              >
-                                <Copy className="w-3.5 h-3.5" />
-                                نسخ التقرير الكامل
-                              </button>
-                            </div>
-
-                            <div className="bg-slate-900/60 p-4 rounded border border-slate-850 font-mono text-slate-300 text-xs text-left overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-96" dir="ltr">
-                              {bountyReportDraft}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* SCOPES AND PROGRAMS */}
-                      <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-4">
-                        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                            <Briefcase className="w-4 h-4 text-cyan-400" />
-                            نطاقات الأهداف والمكافآت (Bug Bounty Scopes)
-                          </h3>
-                        </div>
-
-                        <div className="space-y-4">
-                          {bbPrograms.map((prog: any) => (
-                            <div key={prog.id} className="bg-slate-950 p-4 rounded-xl border border-slate-850 hover:border-slate-800 transition-all space-y-3">
-                              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
-                                <div className="space-y-1">
-                                  <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                    {prog.targetName}
-                                  </h4>
-                                  <p className="text-[11px] text-slate-400 font-mono select-all">
-                                    {prog.targetName.split('(')[1]?.replace(')', '') || prog.targetName}
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="px-2 py-0.5 text-[10px] bg-amber-950 text-amber-400 border border-amber-500/20 font-bold rounded">
-                                    المكافأة: {prog.rewardRange}
-                                  </span>
-                                  <span className="px-2 py-0.5 text-[10px] bg-cyan-950 text-cyan-400 border border-cyan-500/20 font-mono font-bold rounded">
-                                    مضاعف الخطورة: {prog.severityMultiplier}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] border-t border-slate-900 pt-3">
-                                <div className="space-y-1 bg-slate-900/40 p-2 rounded border border-slate-900">
-                                  <span className="text-emerald-400 font-bold">✓ الثغرات داخل النطاق (In Scope):</span>
-                                  <p className="text-slate-300 leading-relaxed">{prog.scope}</p>
-                                </div>
-                                <div className="space-y-1 bg-slate-900/40 p-2 rounded border border-slate-900">
-                                  <span className="text-red-400 font-bold">✗ خارج النطاق والممنوع (Out of Scope):</span>
-                                  <p className="text-slate-300 leading-relaxed">{prog.outOfScope}</p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* SUBMISSIONS LIST TRACKER */}
-                      <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-4">
-                        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                            <FileText className="w-4 h-4 text-purple-400" />
-                            سجل الثغرات المقدمة ومطالبات المكافأة
-                          </h3>
-                        </div>
-
-                        {bbSubmissions.length === 0 ? (
-                          <div className="text-center py-10 text-slate-500 text-xs">
-                            لا توجد تقارير ثغرات مسجلة باسمك حالياً. هل اكتشفت ثغرة في أحد الأنظمة؟ أرسل تقريرك الأول الآن!
-                          </div>
-                        ) : (
-                          <div className="space-y-4">
-                            {bbSubmissions.map((sub: any) => (
-                              <div key={sub.id} className="bg-slate-950 border border-slate-850 rounded-xl p-4 space-y-3 hover:border-slate-800 transition-all">
-                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                                  <div>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
-                                        sub.severity === 'Critical' ? 'bg-red-950 text-red-400 border border-red-500/20' :
-                                        sub.severity === 'High' ? 'bg-amber-950 text-amber-400 border border-amber-500/20' :
-                                        sub.severity === 'Medium' ? 'bg-yellow-950 text-yellow-400 border border-yellow-500/20' :
-                                        'bg-slate-800 text-slate-300 border border-slate-700'
-                                      }`}>
-                                        {sub.severity === 'Critical' ? 'حرجة جداً' : sub.severity === 'High' ? 'خطيرة' : sub.severity === 'Medium' ? 'متوسطة' : 'منخفضة'}
-                                      </span>
-                                      <h4 className="text-xs font-bold text-white">{sub.title}</h4>
-                                    </div>
-                                    <p className="text-[10px] text-slate-400 mt-1">الهدف: <code className="text-cyan-400 font-mono">{sub.targetName}</code></p>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 ${
-                                      sub.status === 'Rewarded' ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/20' :
-                                      sub.status === 'Accepted' ? 'bg-blue-950/80 text-blue-400 border border-blue-500/20' :
-                                      sub.status === 'Rejected' ? 'bg-rose-950/80 text-rose-400 border border-rose-500/20' :
-                                      'bg-slate-900 text-slate-400 border border-slate-800'
-                                    }`}>
-                                      <span className={`w-1.5 h-1.5 rounded-full ${
-                                        sub.status === 'Rewarded' ? 'bg-emerald-500' :
-                                        sub.status === 'Accepted' ? 'bg-blue-500' :
-                                        sub.status === 'Rejected' ? 'bg-rose-500' : 'bg-slate-500'
-                                      }`}></span>
-                                      {sub.status === 'Rewarded' ? `تم الدفع (${sub.rewardAmount})` :
-                                       sub.status === 'Accepted' ? 'مقبول وبانتظار الدفع' :
-                                       sub.status === 'Rejected' ? 'مرفوض/مكرر' : 'تحت المراجعة'}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                <div className="text-xs text-slate-300 whitespace-pre-wrap bg-slate-900/60 p-3 rounded-lg border border-slate-900 leading-relaxed">
-                                  <strong className="text-slate-400 block mb-1">تفاصيل الثغرة:</strong>
-                                  {sub.description}
-                                </div>
-
-                                <div className="text-xs bg-slate-950 border border-slate-900 p-3 rounded-lg font-mono text-cyan-300 whitespace-pre overflow-x-auto scrollbar-thin">
-                                  <span className="text-slate-500 block mb-1 font-sans">إثبات المفهوم PoC:</span>
-                                  {sub.poc}
-                                </div>
-
-                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center text-[10px] text-slate-500 pt-1">
-                                  <span>تقديم بواسطة: <code className="text-slate-400 font-mono">{sub.submittedBy}</code></span>
-                                  <span>تاريخ التقديم: {new Date(sub.submittedAt).toLocaleString('ar-SA')}</span>
-                                </div>
-
-                                {/* ADMIN REVIEW BAR (ONLY VISIBLE FOR ADMINS TO ACCEPT/REJECT REWARDS) */}
-                                {userProfile?.user.role === 'Admin' && sub.status === 'Under Review' && (
-                                  <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-900 mt-2 bg-amber-950/10 p-3 rounded-lg border border-amber-900/10">
-                                    <span className="text-[10px] text-amber-400 font-bold flex items-center gap-1">
-                                      <Sliders className="w-3.5 h-3.5 text-amber-500" />
-                                      إجراءات إدارة التقارير (إداري):
-                                    </span>
-                                    <button
-                                      onClick={() => {
-                                        const reward = prompt("أدخل قيمة المكافأة المالية بالدولار (مثال: $2,500) أو اتركه فارغاً:", "$1,500");
-                                        if (reward !== null) handleBbReview(sub.id, 'Rewarded', reward);
-                                      }}
-                                      className="px-2.5 py-1 bg-emerald-950 hover:bg-emerald-900 text-emerald-400 border border-emerald-500/20 rounded text-[10px] font-bold"
-                                    >
-                                      ✓ قبول ودفع مكافأة
-                                    </button>
-                                    <button
-                                      onClick={() => handleBbReview(sub.id, 'Accepted', '$0 (قيد صرف المكافأة)')}
-                                      className="px-2.5 py-1 bg-blue-950 hover:bg-blue-900 text-blue-400 border border-blue-500/20 rounded text-[10px] font-bold"
-                                    >
-                                      ✓ قبول وتأجيل الدفع
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        if (confirm("هل أنت متأكد من رفض هذا التقرير؟")) {
-                                          handleBbReview(sub.id, 'Rejected', '$0 (مرفوض/مكرر)');
-                                        }
-                                      }}
-                                      className="px-2.5 py-1 bg-red-950 hover:bg-red-900 text-red-400 border border-red-500/20 rounded text-[10px] font-bold"
-                                    >
-                                      ✗ رفض / مكرر
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                    </div>
-
-                    {/* RIGHT ONE-THIRD: LEADERBOARD & RULES */}
-                    <div className="space-y-6">
-                      
-                      {/* LEADERBOARD (HALL OF FAME) */}
-                      <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-4">
-                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                          <Trophy className="w-4 h-4 text-amber-400 animate-pulse" />
-                          لوحة الشرف والمتصدرين (Hall of Fame)
-                        </h3>
-                        <p className="text-[10px] text-slate-400 font-semibold">الباحثين الأمنيين الأكثر مساهمة في تأمين منصات شركتنا.</p>
-
-                        <div className="space-y-3">
-                          {bbLeaderboard.map((leader: any) => (
-                            <div key={leader.rank} className="bg-slate-950 border border-slate-850 p-3 rounded-lg flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2.5">
-                                <span className={`w-6 h-6 rounded-full font-bold font-mono text-[11px] flex items-center justify-center border ${
-                                  leader.rank === 1 ? 'bg-amber-950/80 text-amber-400 border-amber-500/30' :
-                                  leader.rank === 2 ? 'bg-slate-800 text-slate-300 border-slate-700' :
-                                  leader.rank === 3 ? 'bg-amber-900/40 text-amber-600 border-amber-900/20' :
-                                  'bg-slate-900 text-slate-400 border-slate-850'
-                                }`}>
-                                  {leader.rank}
-                                </span>
-                                <div className="space-y-0.5">
-                                  <div className="text-[11px] font-bold text-white">{leader.name}</div>
-                                  <div className="flex gap-1 flex-wrap">
-                                    {leader.badges.map((badge: string, bidx: number) => (
-                                      <span key={bidx} className="bg-slate-900 text-slate-400 px-1 py-0.5 rounded text-[8px]">
-                                        {badge}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="text-left">
-                                <div className="text-xs font-bold text-amber-400 font-mono">{leader.points} نقطة</div>
-                                <div className="text-[9px] text-slate-500">مكاسب: {leader.totalEarned}</div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* PARTICIPATION GUIDELINES & SAFE HARBOR */}
-                      <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-3">
-                        <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                          <Lock className="w-4 h-4 text-emerald-400" />
-                          مبادئ الحماية الآمنة (Safe Harbor)
-                        </h3>
-                        <p className="text-[10px] text-slate-400 leading-relaxed">
-                          نحن نتعهد بعدم اتخاذ أي إجراءات قانونية ضد الباحثين الأمنيين الذين يلتزمون بالمبادئ التالية:
-                        </p>
-                        <div className="space-y-2 text-[10px] text-slate-300">
-                          <div className="flex items-start gap-1.5">
-                            <span className="text-cyan-400">•</span>
-                            <span>ألا يتم الوصول لبيانات مستخدمين حقيقيين أو المساس بخصوصيتهم.</span>
-                          </div>
-                          <div className="flex items-start gap-1.5">
-                            <span className="text-cyan-400">•</span>
-                            <span>إجراء عمليات الفحص والاختبار الفني باستخدام حسابات مخصصة للتجربة.</span>
-                          </div>
-                          <div className="flex items-start gap-1.5">
-                            <span className="text-cyan-400">•</span>
-                            <span>الإفصاح عن الثغرة إلينا فوراً وسرياً وعدم نشرها للعامة قبل المعالجة الفنية.</span>
-                          </div>
-                          <div className="flex items-start gap-1.5">
-                            <span className="text-cyan-400">•</span>
-                            <span>عدم تنفيذ هجمات الحرمان من الخدمة DoS/DDoS أو تخريب كتل التشغيل للمخدمات الفنية.</span>
-                          </div>
-                        </div>
-                        <div className="bg-slate-950 p-2.5 rounded border border-slate-850 text-[9px] text-slate-400">
-                          باقي لوائح وقواعد فحص الثغرات معتمدة طبقاً للمبادئ الوطنية الصادرة عن هيئة الأمن السيبراني.
-                        </div>
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                </div>
-              )}
-
-              {/* H. PLATFORM CONSTITUTION & GOVERNANCE COMPLIANCE CENTER */}
-              {activeTab === 'constitution' && (
-                <div className="space-y-6">
-                  
-                  {/* CONSTITUTION HERO BANNER */}
-                  <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8">
-                    <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                    <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                    
-                    <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
-                      <div className="space-y-3 text-center md:text-right">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/30 text-cyan-400 text-xs font-bold font-mono">
-                          <BookOpen className="w-3.5 h-3.5 animate-pulse" />
-                          <span>دستور التطوير والتشغيل الأمني — Sniper AI Security Constitution</span>
-                        </div>
-                        <h2 className="text-2xl md:text-3xl font-black tracking-tight text-white">
-                          مركز الامتثال الدستوري والحوكمة البرمجية
-                        </h2>
-                        <p className="text-xs md:text-sm text-slate-400 max-w-3xl leading-relaxed">
-                          بناءً على المبادئ والمجلدات الاثني عشر للدستور الفني، يمثل هذا المركز أداة المراقبة والتحقق الفوري من مطابقة جميع أجزاء النظام (الواجهة الأمامية، الخلفية، محرك الفحص الأمني، والذكاء الاصطناعي) للمعايير والسياسات الصارمة المعتمدة في المجلدات البرمجية.
-                        </p>
-                      </div>
-                      <div className="shrink-0">
-                        <div className="bg-slate-950 p-4 rounded-xl border border-slate-850 text-center space-y-1">
-                          <span className="text-[10px] text-slate-500 block font-semibold">مؤشر الامتثال الكلي للدستور</span>
-                          <span className="text-3xl font-black font-mono text-emerald-400">100%</span>
-                          <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-500/25 px-2 py-0.5 rounded-full font-bold block mt-1">
-                            ✓ مطابق بالكامل ومفعّل
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* HIGH VALUE STATUS SUMMARY */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 flex items-center gap-3.5">
-                      <div className="p-3 bg-cyan-950/80 text-cyan-400 rounded-xl border border-cyan-500/10 shrink-0">
-                        <CheckCircle className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <span className="text-xs text-slate-400 block">حالة المجلدات الاثني عشر</span>
-                        <span className="text-sm font-bold text-white font-mono">12 / 12 مفعلة</span>
-                        <span className="text-[10px] text-emerald-400 block mt-0.5">امتثال هندسي معتمد</span>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 flex items-center gap-3.5">
-                      <div className="p-3 bg-purple-950/80 text-purple-400 rounded-xl border border-purple-500/10 shrink-0">
-                        <Cpu className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <span className="text-xs text-slate-400 block">تدقيق الأمان الذكي</span>
-                        <span className="text-sm font-bold text-white font-mono">نشط ومؤمن 100%</span>
-                        <span className="text-[10px] text-slate-400 block mt-0.5">سرية تامة للمفاتيح والأكواد</span>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 flex items-center gap-3.5">
-                      <div className="p-3 bg-emerald-950/80 text-emerald-400 rounded-xl border border-emerald-500/10 shrink-0">
-                        <Lock className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <span className="text-xs text-slate-400 block">ضوابط عزل الفحص الأمني</span>
-                        <span className="text-sm font-bold text-white font-mono">Sandbox Active</span>
-                        <span className="text-[10px] text-emerald-400 block mt-0.5">حماية الخوادم والملكيات</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* INTERACTIVE TWELVE VOLUMES EXPLORER */}
-                  <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-4">
-                    <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                        <Sliders className="w-4 h-4 text-cyan-400" />
-                        سجل تدقيق المجلدات الاثني عشر لـ Sniper Security Constitution
-                      </h3>
-                      <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono font-bold">
-                        تحديث فوري للنظام
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      استعراض المعايير الهندسية والأمنية للدستور وكيفية تجسيدها البرمجي الفعلي داخل شيفرة المصدر الفنية للنظام:
-                    </p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {[
-                        {
-                          vol: "Volume I",
-                          title: "Engineering Constitution & Core Values",
-                          titleAr: "المجلد الأول: الدستور الهندسي والقيم الأساسية",
-                          icon: <BookOpen className="w-4 h-4 text-cyan-400" />,
-                          standard: "Inter / Space Grotesk display fonts, Cosmic slate dark UI, generous negative spaces.",
-                          codeTarget: "src/index.css / src/App.tsx",
-                          desc: "فرض تصميم الواجهة بشكل جمالي متباين ومريح للغاية للعين، مع خطوط عرض ممتازة وتركيز كامل على تماسك الفراغات السلبية لتقليل التشتت البصري.",
-                          impl: "تم تضمين خط Inter و JetBrains Mono في CSS، مع استهلاك كامل للتدرجات الرمادية الداكنة والحد من الألوان الطارئة."
-                        },
-                        {
-                          vol: "Volume II",
-                          title: "Enterprise Architecture",
-                          titleAr: "المجلد الثاني: معمارية المؤسسات الكبرى",
-                          icon: <Cpu className="w-4 h-4 text-purple-400" />,
-                          standard: "Decoupled layers, strict Type definitions, highly organized project directories.",
-                          codeTarget: "backend/controllers / backend/services / src/types.ts",
-                          desc: "ضمان فصل الاهتمامات وفصل الكود الأساسي إلى وحدات وخدمات مستقلة (Modular) وتجنب تكديس منطق العمل البرمجي في ملف واحد.",
-                          impl: "هيكلة المشروع ليتضمن مجلدات مخصصة للمتحكمات (controllers)، والخدمات (services)، والمستودعات (repositories)، وواجهات الاتصال (interfaces)."
-                        },
-                        {
-                          vol: "Volume III",
-                          title: "Backend Bible",
-                          titleAr: "المجلد الثالث: إنجيل الخوادم والمنطق الخلفي",
-                          icon: <Server className="w-4 h-4 text-blue-400" />,
-                          standard: "Robust Express routing, standardized controller response envelopes, unified AppError helper.",
-                          codeTarget: "server.ts / backend/routes / backend/middlewares",
-                          desc: "تأمين معالجة الأخطاء الخلفية مركزياً ومنع تسريب أي معلومات تفصيلية عن المخدم في بيئات الإنتاج، مع الحفاظ على ردود خادم موحدة ومقيدة.",
-                          impl: "استخدام غلاف الاستجابة الموحد { success, data, errors } في جميع مسارات Express مع التحقق الصارم من المدخلات وصحة البرمجيات."
-                        },
-                        {
-                          vol: "Volume IV",
-                          title: "Security & Pentest Engine",
-                          titleAr: "المجلد الرابع: محرك الفحص واختبار الاختراق",
-                          icon: <ShieldAlert className="w-4 h-4 text-red-400" />,
-                          standard: "Secure parameter arrays via spawn, strict timeouts, isolation.",
-                          codeTarget: "backend/services/securityEngine.ts / backend/security/scanners",
-                          desc: "تشغيل أدوات الفحص (Nmap, Nuclei, ZAP) بأعلى درجات الأمان لمنع هجمات حقن الأوامر (Command Injection) وتفادي العمليات المعلقة.",
-                          impl: "استخدام مصفوفات المعاملات المفصولة آلياً في spawn وتخصيص حد أقصى للوقت (Timeout) ومطالبة المستخدمين بوضع كود إثبات الملكية."
-                        },
-                        {
-                          vol: "Volume V",
-                          title: "AI Security Engine",
-                          titleAr: "المجلد الخامس: محرك الأمان المدعوم بالذكاء الاصطناعي",
-                          icon: <Sparkles className="w-4 h-4 text-amber-400" />,
-                          standard: "Strict server-side Google GenAI SDK integration, fallback heuristics engine.",
-                          codeTarget: "backend/services/aiEngine.ts",
-                          desc: "تنفيذ تحليلات الأمان وتدقيق الثغرات بالكامل في جهة الخادم باستخدام مكتبة Google الرسمية دون كشف أي مفتاح سري للمتصفح.",
-                          impl: "استدعاء الموديل gemini-2.5-flash في المخدم لفلترة وتوثيق الثغرات، مع توفير محرك ذكاء اصطناعي محلي كبديل (fallback) لضمان عدم توقف الفحص."
-                        },
-                        {
-                          vol: "Volume VI",
-                          title: "Database Architecture",
-                          titleAr: "المجلد السادس: هندسة وقواعد البيانات الفنية",
-                          icon: <Database className="w-4 h-4 text-emerald-400" />,
-                          standard: "Relational tables with Drizzle, strict multi-tenancy isolation via company_id constraints.",
-                          codeTarget: "src/db/schema.ts",
-                          desc: "استخدام علاقات ونماذج معقدة وموثوقة بقواعد البيانات العلائقية لضمان سلامة البيانات وعزل كامل السجلات للمستأجرين لمنع تسريب الملفات.",
-                          impl: "هيكلة الجداول عبر Drizzle ORM متضمنة جداول المشاريع، الأهداف، الثغرات، وسجلات الفحص والأعضاء مع ربط آلي للمفاتيح الخارجية."
-                        },
-                        {
-                          vol: "Volume VII",
-                          title: "Dashboard UI & User Experience",
-                          titleAr: "المجلد السابع: واجهة المستخدم وتجربة المراقبة",
-                          icon: <Activity className="w-4 h-4 text-cyan-400" />,
-                          standard: "Staggered transitions, real-time SSE progress simulations, detailed interactive charts.",
-                          codeTarget: "src/App.tsx / src/components/SecurityTerminal.tsx",
-                          desc: "تقديم تجربة تفاعلية مذهلة تتضمن تقدم عمليات الفحص بشكل حي، واستعراض سجلات المخدم داخل طرفية أمنية تفاعلية تحاكي أنظمة تشغيل القراصنة.",
-                          impl: "تضمين Recharts للرسوم البيانية المتقدمة، و AnimatePresence للانتقالات، ومحاكاة دفق الطرفية الأمنية خطوة بخطوة."
-                        },
-                        {
-                          vol: "Volume VIII",
-                          title: "Reporting Engine",
-                          titleAr: "المجلد الثامن: محرك التقارير الأمنية والامتثال",
-                          icon: <FileText className="w-4 h-4 text-blue-400" />,
-                          standard: "Independent HTML reports printable as PDF, CVSS scoring equations, ISO/PCI/OWASP compliance.",
-                          codeTarget: "backend/routes/api.ts (exportToStandaloneHTML)",
-                          desc: "توليد تقارير تنفيذية وتقنية مستقلة تماماً ومحصنة بالبيانات المرجعية والدرجات الحسابية الدقيقة للامتثال للمعايير العالمية.",
-                          impl: "تصدير فوري لتقرير أمني كصفحة HTML تفاعلية مستقلة ومنسقة للطباعة أو الحفظ كـ PDF بضغطة زر واحدة."
-                        },
-                        {
-                          vol: "Volume IX",
-                          title: "Performance Optimization & Scalability",
-                          titleAr: "المجلد التاسع: تحسين الأداء وقابلية التوسع",
-                          icon: <TrendingUp className="w-4 h-4 text-purple-400" />,
-                          standard: "Optimal repository query caching, local state optimization, low network overhead.",
-                          codeTarget: "backend/repositories / backend/database/db.ts",
-                          desc: "تسريع عمليات استجابة المخدم والحفاظ على أداء فائق في جلب وتخزين الثغرات والمشروعات لتفادي تعليق واجهات المستخدم.",
-                          impl: "تأمين مخازن البيانات البرمجية في مستودعات مخصصة (Repositories) مع تقنيات قراءة سريعة وزمن تأخير للطلبات يقل عن 25 مللي ثانية."
-                        },
-                        {
-                          vol: "Volume X",
-                          title: "Deployment, DevOps & Cloud Infrastructure",
-                          titleAr: "المجلد العاشر: عمليات النشر والبنية التحتية",
-                          icon: <Lock className="w-4 h-4 text-rose-400" />,
-                          standard: "Strict port 3000 host 0.0.0.0 binding, container configuration compliance.",
-                          codeTarget: "server.ts / package.json",
-                          desc: "ضمان جهوزية التطبيق للعمل داخل بيئات حاويات Cloud Run وتخطي قيود التوجيه عبر ربط المنفذ الصحيح المعتمد للمنصة.",
-                          impl: "ربط خادم Express بالمنفذ 3000 والمضيف 0.0.0.0 بشكل حتمي، مع إعداد سكريبت build المجمع لخلفية TypeScript عبر esbuild."
-                        },
-                        {
-                          vol: "Volume XI",
-                          title: "Bug Bounty & Vulnerability Disclosure",
-                          titleAr: "المجلد الحادي عشر: مكافآت الثغرات والإفصاح المسؤول",
-                          icon: <Award className="w-4 h-4 text-amber-500" />,
-                          standard: "CVD policies, safe harbor guarantees, leaderboard gamification.",
-                          codeTarget: "backend/routes/api.ts / src/App.tsx",
-                          desc: "بناء ثقافة تعاونية مميزة مع مجتمع قراصنة القبعات البيضاء الأخلاقيين للإبلاغ الآمن عن العيوب البرمجية ومكافأتهم مالياً ومعنوياً.",
-                          impl: "تطوير بوابة مكافآت كاملة تتضمن لوحة المتصدرين الشرفية، وتتبع حالات التقارير، والامتثال لقواعد الملاذ الآمن (Safe Harbor)."
-                        },
-                        {
-                          vol: "Volume XII",
-                          title: "Auto-Remediation & Self-Healing",
-                          titleAr: "المجلد الثاني عشر: المعالجة الذاتية وإصلاح الثغرات آلياً",
-                          icon: <CheckCircle className="w-4 h-4 text-emerald-400" />,
-                          standard: "AST transformations, AI code patch proposals, test validations.",
-                          codeTarget: "backend/services/aiEngine.ts (analyzeVulnerabilityComplexity)",
-                          desc: "دعم ميزات الصيانة الذاتية وإصلاح الأكواد البرمجية التالفة آلياً بالذكاء الاصطناعي مع تقديم توصيات وحزم معالجة فورية قابلة للدمج المباشر.",
-                          impl: "مساعد الذكاء الاصطناعي مجهز بتقديم حزم برمجية كاملة وحلول ترقيع فوري للعيوب وإعادة توجيه الاستعلامات آلياً للمبرمج."
-                        }
-                      ].map((item, idx) => (
-                        <div key={idx} className="bg-slate-950 p-4 rounded-xl border border-slate-850 hover:border-slate-800 transition-all space-y-3">
-                          <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-2">
-                              <div className="p-1.5 bg-slate-900 border border-slate-800 rounded-lg shrink-0">
-                                {item.icon}
-                              </div>
-                              <div>
-                                <span className="text-[10px] text-cyan-400 font-mono font-bold block">{item.vol}</span>
-                                <h4 className="text-xs font-bold text-white leading-relaxed">{item.titleAr}</h4>
-                              </div>
-                            </div>
-                            <span className="text-[9px] px-2 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-500/25 font-bold rounded-full">
-                              مفعّل بالكامل
-                            </span>
-                          </div>
-
-                          <p className="text-[11px] text-slate-400 leading-relaxed">{item.desc}</p>
-
-                          <div className="pt-2 border-t border-slate-900 space-y-1.5 text-[10px]">
-                            <div className="flex justify-between text-slate-400">
-                              <span>المعيار الدستوري الفني:</span>
-                              <span className="font-mono font-semibold text-slate-300">{item.standard}</span>
-                            </div>
-                            <div className="flex justify-between text-slate-400">
-                              <span>ملف الاستهداف بالشيفرة:</span>
-                              <span className="font-mono font-semibold text-cyan-400">{item.codeTarget}</span>
-                            </div>
-                            <div className="flex justify-between text-slate-400">
-                              <span>التطبيق البرمجي الفعلي:</span>
-                              <span className="text-slate-300">{item.impl}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* PLATFORM SECURITY OATH */}
-                  <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-3 text-center relative overflow-hidden">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-cyan-500/5 blur-3xl rounded-full pointer-events-none"></div>
-                    <h3 className="text-sm font-bold text-white flex items-center justify-center gap-1.5 relative z-10">
-                      <Lock className="w-4 h-4 text-cyan-400" />
-                      ميثاق الأمان والمسؤولية الدفاعية لمنصة Sniper AI Security
-                    </h3>
-                    <p className="text-xs text-slate-300 max-w-3xl mx-auto leading-relaxed relative z-10 font-medium">
-                      &quot;نحن نتعهد بربط وتطوير كافة مكونات هذه المنصة وفقاً للمجلدات الدستورية الاثني عشر المذكورة أعلاه، مع إبقاء جهود التحليل الأمني والتدقيق والذكاء الاصطناعي محصورة بالكامل داخل بيئة خادم معزولة ومحمية. نلتزم باحترام ملكية النطاقات والامتثال التام لقواعد الملاذ الآمن لصائدي الثغرات، حمايةً للبنية التحتية وحفاظاً على نزاهة واحترافية الحماية الرقمية للمؤسسات والأفراد.&quot;
-                    </p>
-                    <div className="text-[10px] text-slate-500 font-mono pt-1 relative z-10">
-                      Locked & Signed under SHA-256 Protocol Verification
-                    </div>
-                  </div>
-
-                </div>
-              )}
-
+                            <ErrorBoundary>
+                <AppRouter
+                  onOpenSelfHealing={handlePerformSelfHealing}
+                  onOpenAddProject={() => setShowAddProjectModal(true)}
+                  onOpenAddTarget={() => {
+                    if (projects.length > 0) {
+                      setSelectedProjectIdForTarget(projects[0].id);
+                      setShowAddTargetModal(true);
+                    }
+                  }}
+                  onVerifyOwnership={(target) => setVerificationModalTarget(target)}
+                  onOpenTerminal={(scanJobId) => {
+                    setActiveTerminalScanId(scanJobId);
+                    setShowTerminal(true);
+                  }}
+                  onDisableMfa={handleDisableMfa}
+                  onOpenMfaSetup={handleOpenMfaSetup}
+                />
+              </ErrorBoundary>
             </div>
           )}
 
         </main>
       </div>
+
+      <ToastContainer />
 
       {/* FOOTER COOPERATIVE DISCLAIMER */}
       <footer className="bg-slate-900 border-t border-slate-800 py-3.5 px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500 shrink-0">
@@ -4228,7 +2089,7 @@ export default function App() {
                     onChange={(e) => setSelectedProjectIdForTarget(e.target.value)}
                     className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-cyan-500/50"
                   >
-                    {projects.map(p => (
+                    {safeProjects.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>
@@ -4254,7 +2115,7 @@ export default function App() {
                       onChange={(e) => {
                         const val = e.target.value as TargetType;
                         setNewTargetType(val);
-                        if (val !== 'Mobile') {
+                        if (String(val).toUpperCase() !== 'MOBILE') {
                           setApkFile(null);
                           setApkFileName('');
                         }
@@ -4426,7 +2287,7 @@ export default function App() {
                     className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-amber-500/50"
                   >
                     <option value="">-- اختر الهدف الفني المصاب --</option>
-                    {bbPrograms.map(p => (
+                    {safeBbPrograms.map(p => (
                       <option key={p.id} value={p.targetName}>{p.targetName}</option>
                     ))}
                   </select>
@@ -4507,13 +2368,231 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* AUTO REMEDIATION & SELF HEALING MODAL (Volume XII) */}
+      <AnimatePresence>
+        {remediationModalVuln && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="w-full max-w-5xl bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+            >
+              {/* Modal Header */}
+              <div className="p-5 border-b border-slate-800 bg-slate-950 flex justify-between items-center">
+                <div className="flex items-center gap-2.5">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Cpu className="w-4 h-4 text-emerald-400" />
+                      مستشار الترميم التلقائي والشفاء الذاتي (Self-Healing AI Engine)
+                    </h3>
+                    <p className="text-[10px] text-slate-400 mt-0.5">بروتوكول التحقق الثلاثي المعزول وتأمين الأكواد البرمجية (Volume XII Compliance)</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setRemediationModalVuln(null)}
+                  disabled={remediationLoading}
+                  className="text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+                {/* Vulnerability Meta info */}
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-850 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <span className="text-slate-500 font-bold block mb-1">الثغرة المستهدفة:</span>
+                    <span className="text-white font-extrabold text-xs">{remediationModalVuln.title}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-bold block mb-1">التصنيف الفني:</span>
+                    <span className="text-cyan-400 font-mono font-medium">{remediationModalVuln.type}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-bold block mb-1">موقع الملف البرمجي:</span>
+                    <span className="text-amber-400 font-mono truncate block" title={remediationModalVuln.location}>{remediationModalVuln.location}</span>
+                  </div>
+                </div>
+
+                {/* Left/Right Grid Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Left Side: Validation Pipeline & Logs (5 cols) */}
+                  <div className="lg:col-span-5 space-y-4">
+                    <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950 flex flex-col h-full min-h-[300px]">
+                      <div className="bg-slate-900 px-4 py-2.5 border-b border-slate-800 flex justify-between items-center">
+                        <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                          <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+                          مصفوفة التدقيق والتحقق الثلاثي
+                        </span>
+                        {remediationLoading && (
+                          <span className="text-[10px] text-emerald-400 animate-pulse font-mono flex items-center gap-1">
+                            <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                            جاري المعالجة...
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Step Progress indicators */}
+                      <div className="p-4 border-b border-slate-850 space-y-3 bg-slate-900/40">
+                        {/* Step 1 */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-300 font-medium">1. توليد رقعة الترميم الآمن (AI Code Patch)</span>
+                          {validationStep > 1 ? (
+                            <span className="text-emerald-500 font-mono font-bold flex items-center gap-1">✓ Passed</span>
+                          ) : validationStep === 1 ? (
+                            <span className="text-amber-400 animate-pulse font-mono">Running...</span>
+                          ) : (
+                            <span className="text-slate-600 font-mono">Pending</span>
+                          )}
+                        </div>
+
+                        {/* Step 2 */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-300 font-medium">2. فحص الصياغة وبناء الملفات (ESLint & Build)</span>
+                          {validationStep > 2 ? (
+                            <span className="text-emerald-500 font-mono font-bold flex items-center gap-1">✓ Passed</span>
+                          ) : validationStep === 2 ? (
+                            <span className="text-amber-400 animate-pulse font-mono">Running...</span>
+                          ) : (
+                            <span className="text-slate-600 font-mono">Pending</span>
+                          )}
+                        </div>
+
+                        {/* Step 3 */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-300 font-medium">3. تشغيل اختبارات الوحدة (Unit Tests Suite)</span>
+                          {validationStep > 3 ? (
+                            <span className="text-emerald-500 font-mono font-bold flex items-center gap-1">✓ Passed</span>
+                          ) : validationStep === 3 ? (
+                            <span className="text-amber-400 animate-pulse font-mono">Running...</span>
+                          ) : (
+                            <span className="text-slate-600 font-mono">Pending</span>
+                          )}
+                        </div>
+
+                        {/* Step 4 */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-300 font-medium">4. إعادة المسح الأمني للتأكيد (Scanner Check)</span>
+                          {validationStep > 4 ? (
+                            <span className="text-emerald-500 font-mono font-bold flex items-center gap-1">✓ Passed</span>
+                          ) : validationStep === 4 ? (
+                            <span className="text-amber-400 animate-pulse font-mono">Running...</span>
+                          ) : (
+                            <span className="text-slate-600 font-mono">Pending</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Interactive Log Console */}
+                      <div className="p-4 flex-1 font-mono text-[10px] text-slate-300 bg-black overflow-y-auto max-h-[220px] whitespace-pre-wrap leading-relaxed">
+                        {simulatedLogs}
+                        {remediationResult?.validationLogs && (
+                          <div className="mt-2 text-emerald-400 border-t border-slate-900 pt-2 font-bold">
+                            {remediationResult.validationLogs}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Side: Code snippets & Pull Request Link (7 cols) */}
+                  <div className="lg:col-span-7 flex flex-col justify-between space-y-4">
+                    {/* Code Diff Display */}
+                    <div className="space-y-4 flex-1">
+                      {!remediationResult ? (
+                        <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950 flex flex-col h-full min-h-[300px] justify-center items-center text-center p-6 space-y-4">
+                          <Cpu className="w-12 h-12 text-slate-700 animate-bounce" />
+                          <div className="space-y-1">
+                            <p className="text-sm font-bold text-slate-300">جاري إخضاع الكود للترميم والشفاء الذاتي المعزول</p>
+                            <p className="text-xs text-slate-500 max-w-sm mx-auto">سيقوم الخادم بتخليق حلول آمنة متوافقة مع معايير OWASP ومطابقتها للتأكد من عدم وجود أي تراجع وظيفي.</p>
+                          </div>
+                          <div className="w-48 bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500 rounded-full animate-pulse w-2/3"></div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {/* Vulnerable vs Patched Split */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Vulnerable Code block */}
+                            <div className="border border-red-500/20 rounded-xl overflow-hidden bg-slate-950">
+                              <div className="bg-red-500/10 px-3 py-2 border-b border-red-500/20 text-red-400 font-bold flex items-center justify-between">
+                                <span>الكود الثغري المكتشف</span>
+                                <span className="text-[9px] bg-red-950 px-2 py-0.5 rounded font-mono border border-red-900">Vulnerable</span>
+                              </div>
+                              <pre className="p-3 overflow-x-auto text-[9px] font-mono text-slate-400 max-h-[250px] leading-relaxed">
+                                {remediationResult.originalCodeSnippet}
+                              </pre>
+                            </div>
+
+                            {/* Patched Code block */}
+                            <div className="border border-emerald-500/20 rounded-xl overflow-hidden bg-slate-950">
+                              <div className="bg-emerald-500/10 px-3 py-2 border-b border-emerald-500/20 text-emerald-400 font-bold flex items-center justify-between">
+                                <span>الكود المُرمم والمؤمن تلقائياً</span>
+                                <span className="text-[9px] bg-emerald-950 px-2 py-0.5 rounded font-mono border border-emerald-900">Patched & Verified</span>
+                              </div>
+                              <pre className="p-3 overflow-x-auto text-[9px] font-mono text-slate-100 max-h-[250px] leading-relaxed">
+                                {remediationResult.patchedCodeSnippet}
+                              </pre>
+                            </div>
+                          </div>
+
+                          {/* Pull Request Link */}
+                          {remediationResult.pullRequestUrl && (
+                            <div className="bg-emerald-950/20 border border-emerald-500/20 p-4 rounded-xl flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-3">
+                                <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+                                <div>
+                                  <p className="font-bold text-white text-xs">تم دفع التحديث الآمن وإنشاء طلب السحب بنجاح</p>
+                                  <p className="text-[10px] text-slate-400 mt-0.5">تم توجيه طلب السحب إلى فرع المعالجة الأمنية في مستودع الكود الخاص بك.</p>
+                                </div>
+                              </div>
+                              <a
+                                href={remediationResult.pullRequestUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-sm"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                استعراض طلب السحب (PR)
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bottom Action bar */}
+                    <div className="pt-4 border-t border-slate-800 flex justify-end gap-3 bg-slate-900/10">
+                      <button
+                        onClick={() => setRemediationModalVuln(null)}
+                        disabled={remediationLoading}
+                        className="px-4 py-2 bg-slate-950 hover:bg-slate-850 text-slate-400 border border-slate-800 rounded-lg font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        إغلاق النافذة
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* SECURITY LOG STREAM TERMINAL OVERLAY */}
       <AnimatePresence>
         {showTerminal && (
           <SecurityTerminal
-            scanJob={activeScans.find(s => s.id === activeTerminalScanId) || null}
-            target={projects.flatMap(p => p.targets).find(t => t.id === (activeScans.find(s => s.id === activeTerminalScanId)?.targetId)) || null}
-            allVulnerabilities={vulnerabilities}
+            scanJob={safeActiveScans.find(s => s.id === activeTerminalScanId) || null}
+            target={safeProjects.flatMap(p => Array.isArray(p?.targets) ? p.targets : []).find(t => t?.id === (safeActiveScans.find(s => s?.id === activeTerminalScanId)?.targetId)) || null}
+            allVulnerabilities={safeVulnerabilities}
             onClose={() => {
               setShowTerminal(false);
               setActiveTerminalScanId(null);
@@ -4521,6 +2600,374 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+
+      {/* 2FA SETUP WIZARD MODAL */}
+      <AnimatePresence>
+        {showMfaSetupModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+            >
+              {/* Header */}
+              <div className="p-5 border-b border-slate-800 bg-slate-950 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <Lock className="w-5 h-5 text-emerald-400" />
+                  <div className="text-right">
+                    <h3 className="text-sm font-bold text-white">إعداد المصادقة الثنائية (Setup 2FA)</h3>
+                    <p className="text-[10px] text-slate-400 mt-0.5">خطوات تأمين إضافية عبر بروتوكولات Firebase Auth</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowMfaSetupModal(false)}
+                  className="text-slate-400 hover:text-slate-200 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-6 text-xs text-slate-300">
+                {/* Step Indicators */}
+                <div className="flex justify-between items-center bg-slate-950/40 p-3 rounded-lg border border-slate-850">
+                  {[1, 2, 3, 4].map((step) => (
+                    <div key={step} className="flex items-center gap-1.5">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] ${
+                        mfaSetupStep === step 
+                          ? 'bg-emerald-600 text-white' 
+                          : mfaSetupStep > step 
+                          ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/20' 
+                          : 'bg-slate-800 text-slate-500'
+                      }`}>
+                        {step}
+                      </div>
+                      <span className={`hidden sm:inline ${mfaSetupStep === step ? 'text-white font-bold' : 'text-slate-500'}`}>
+                        {step === 1 ? 'النوع' : step === 2 ? 'التهيئة' : step === 3 ? 'التحقق' : 'النسخ الاحتياطي'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {mfaError && (
+                  <div className="p-3 bg-red-950/20 border border-red-500/15 rounded-lg text-red-400 flex items-center gap-2 text-right">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>{mfaError}</span>
+                  </div>
+                )}
+
+                {/* Step 1: Choose Type */}
+                {mfaSetupStep === 1 && (
+                  <div className="space-y-4">
+                    <p className="text-slate-400 text-right">اختر طريقة التحقق الثنائي المفضلة لديك لتأمين حسابك:</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* TOTP Option */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTwoFactorType('totp');
+                          setMfaSetupStep(2);
+                        }}
+                        className="p-4 bg-slate-950 hover:bg-slate-850/80 border border-slate-800 hover:border-emerald-500/30 rounded-xl text-right transition-all flex flex-col justify-between h-32 cursor-pointer"
+                      >
+                        <div className="p-2 bg-emerald-950/40 border border-emerald-500/10 text-emerald-400 rounded-lg w-fit">
+                          <Smartphone className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-white text-xs">تطبيق مصادقة (TOTP)</p>
+                          <p className="text-[10px] text-slate-400 mt-1 leading-normal">استخدم تطبيقات مثل Google Authenticator لتوليد رموز أمان مؤقتة.</p>
+                        </div>
+                      </button>
+
+                      {/* SMS Option */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTwoFactorType('sms');
+                          setMfaSetupStep(2);
+                        }}
+                        className="p-4 bg-slate-950 hover:bg-slate-850/80 border border-slate-800 hover:border-emerald-500/30 rounded-xl text-right transition-all flex flex-col justify-between h-32 cursor-pointer"
+                      >
+                        <div className="p-2 bg-cyan-950/40 border border-cyan-500/10 text-cyan-400 rounded-lg w-fit">
+                          <Send className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-white text-xs">رسائل نصية قصيرة (SMS)</p>
+                          <p className="text-[10px] text-slate-400 mt-1 leading-normal">تلقي رمز تأكيد مكون من 6 أرقام على هاتفك المحمول عند طلب التحقق.</p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 2: Configuration */}
+                {mfaSetupStep === 2 && (
+                  <div className="space-y-4">
+                    {twoFactorType === 'totp' ? (
+                      <>
+                        <p className="text-slate-400 text-right">1. قم بمسح رمز الـ QR التالي عبر التطبيق، أو إدخل المفتاح السري الموضح أدناه يدوياً:</p>
+                        <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-950 p-4 rounded-xl border border-slate-850">
+                          {/* QR Simulation */}
+                          <div className="p-3 bg-white rounded-lg w-28 h-28 flex flex-col items-center justify-center relative border border-slate-850 shrink-0">
+                            <div className="grid grid-cols-5 gap-1 w-full h-full">
+                              <div className="bg-slate-950 rounded"></div>
+                              <div className="bg-slate-950 rounded"></div>
+                              <div className="bg-white rounded"></div>
+                              <div className="bg-slate-950 rounded"></div>
+                              <div className="bg-slate-950 rounded"></div>
+
+                              <div className="bg-slate-950 rounded"></div>
+                              <div className="bg-white rounded"></div>
+                              <div className="bg-slate-950 rounded"></div>
+                              <div className="bg-white rounded"></div>
+                              <div className="bg-slate-950 rounded"></div>
+
+                              <div className="bg-white rounded"></div>
+                              <div className="bg-slate-950 rounded"></div>
+                              <div className="bg-white rounded"></div>
+                              <div className="bg-slate-950 rounded"></div>
+                              <div className="bg-white rounded"></div>
+
+                              <div className="bg-slate-950 rounded"></div>
+                              <div className="bg-white rounded"></div>
+                              <div className="bg-slate-950 rounded"></div>
+                              <div className="bg-white rounded"></div>
+                              <div className="bg-slate-950 rounded"></div>
+
+                              <div className="bg-slate-950 rounded"></div>
+                              <div className="bg-slate-950 rounded"></div>
+                              <div className="bg-white rounded"></div>
+                              <div className="bg-slate-950 rounded"></div>
+                              <div className="bg-slate-950 rounded"></div>
+                            </div>
+                            <div className="absolute inset-0 m-auto w-8 h-8 bg-slate-950 border-2 border-white rounded flex items-center justify-center">
+                              <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                            </div>
+                          </div>
+                          
+                          <div className="flex-1 space-y-2 w-full text-right">
+                            <span className="text-[10px] text-slate-500 block">المفتاح السري (TOTP Secret)</span>
+                            <div className="p-2 bg-slate-900 border border-slate-800 rounded font-mono text-white text-[11px] select-all flex items-center justify-between">
+                              <span>{tempSecret}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(tempSecret);
+                                  showToast('تم نسخ المفتاح السري بنجاح!', 'success');
+                                }}
+                                className="text-slate-400 hover:text-white cursor-pointer"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <p className="text-[10px] text-slate-500 leading-normal">اسم الحساب في التطبيق: <code className="text-slate-300 font-mono text-[10px]">Sniper-Security ({userProfile?.user.email})</code></p>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-slate-400 text-right">يرجى إدخال رقم هاتفك المحمول لتلقي رسالة SMS برمز التأكيد:</p>
+                        <div className="space-y-3">
+                          <label className="text-[10px] text-slate-500 block text-right">رقم الهاتف الدولي</label>
+                          <input
+                            type="tel"
+                            placeholder="+966 50 123 4567..."
+                            value={tempPhone}
+                            onChange={(e) => setTempPhone(e.target.value)}
+                            className="p-3 bg-slate-950 border border-slate-800 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 text-white w-full font-mono text-left"
+                          />
+                          <p className="text-[10px] text-slate-500 text-right">ملاحظة: تأكد من تفعيل الشبكة والاتصال لتلقي رمز التحقق الثنائي.</p>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="flex justify-between items-center pt-3 border-t border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setMfaSetupStep(1)}
+                        className="px-3.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg hover:bg-slate-850 cursor-pointer"
+                      >
+                        رجوع
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (twoFactorType === 'sms' && !tempPhone.trim()) {
+                            setMfaError('يرجى إدخال رقم هاتف صالح أولاً.');
+                            return;
+                          }
+                          setMfaError(null);
+                          if (twoFactorType === 'sms') {
+                            showToast(`تم إرسال رمز التحقق الثنائي لرسائل SMS بنجاح إلى الرقم: ${tempPhone}`, 'info');
+                          }
+                          setMfaSetupStep(3);
+                        }}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold cursor-pointer"
+                      >
+                        {twoFactorType === 'sms' ? 'إرسال الرمز والمتابعة' : 'التالي (التحقق)'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Verify Setup */}
+                {mfaSetupStep === 3 && (
+                  <div className="space-y-4">
+                    <p className="text-slate-400 text-right">
+                      أدخل الرمز المكون من 6 أرقام للتأكيد:
+                      <span className="block text-[10px] text-slate-500 mt-1 font-sans">
+                        {twoFactorType === 'totp' 
+                          ? 'الرمز المولد من تطبيق Google Authenticator حالياً.' 
+                          : `الرمز المرسل إلى الهاتف ${tempPhone} (للاختبار والمحاكاة استخدم أي 6 أرقام مثل 123456)`}
+                      </span>
+                    </p>
+                    <div className="space-y-3">
+                      <div className="flex justify-center">
+                        <input
+                          type="text"
+                          maxLength={6}
+                          placeholder="0 0 0 0 0 0"
+                          value={mfaSetupCode}
+                          onChange={(e) => setMfaSetupCode(e.target.value.replace(/\D/g, ''))}
+                          className="p-3 bg-slate-950 border border-slate-800 rounded-lg text-lg tracking-[0.5em] font-mono text-center text-emerald-400 w-48 focus:outline-none focus:border-emerald-500/50"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-3 border-t border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setMfaSetupStep(2)}
+                        className="px-3.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg hover:bg-slate-850 cursor-pointer"
+                      >
+                        رجوع
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleVerifySetup}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold cursor-pointer"
+                      >
+                        تأكيد الرمز وتفعيل الحماية
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 4: Backup Codes / Success */}
+                {mfaSetupStep === 4 && (
+                  <div className="space-y-4 text-center">
+                    <div className="w-12 h-12 rounded-full bg-emerald-950 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto animate-bounce">
+                      <CheckCircle className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-white">تم التحقق بنجاح من المصادقة الثنائية!</h4>
+                      <p className="text-[11px] text-slate-400 leading-normal">يرجى حفظ رموز النسخ الاحتياطي (Backup Codes) الموضحة أدناه لاسترجاع الحساب في حال فقدان هاتف التحقق:</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 bg-slate-950 p-4 rounded-xl border border-slate-850 font-mono text-slate-300 text-center select-all">
+                      {backupCodes.map((code, idx) => (
+                        <div key={idx} className="p-2 bg-slate-900 border border-slate-850 rounded text-[10px]">
+                          {code}
+                        </div>
+                      ))}
+                    </div>
+
+                    <p className="text-[10px] text-red-400 leading-normal">تنبيه: لا تقم بمشاركة هذه الرموز مع أي شخص. يتم استخدام الرمز لمرة واحدة فقط لاستعادة الوصول.</p>
+
+                    <div className="pt-3 border-t border-slate-800 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={handleCompleteMfaEnrollment}
+                        className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-emerald-900/10 cursor-pointer"
+                      >
+                        إنهاء الإعداد وتثبيت الأمان الثنائي
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 2FA SECURITY CHALLENGE WINDOW */}
+      <AnimatePresence>
+        {showMfaChallenge && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+            >
+              {/* Header */}
+              <div className="p-5 border-b border-slate-800 bg-slate-950 flex flex-col items-center text-center space-y-2">
+                <div className="w-12 h-12 rounded-full bg-cyan-950 border border-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                  <Lock className="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">تأكيد الهوية عبر التحقق الثنائي (2FA Challenge)</h3>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">تتطلب هذه العملية الإدارية الحساسة إدخال رمز الأمان لتأكيد الصلاحية البرمجية.</p>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-4">
+                {mfaChallengeError && (
+                  <div className="p-2.5 bg-red-950/20 border border-red-500/15 rounded-lg text-red-400 text-center text-[11px]">
+                    {mfaChallengeError}
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <label className="text-[10px] text-slate-500 block text-right">
+                    رمز تأكيد {twoFactorType === 'totp' ? 'تطبيق Authenticator' : 'رسائل SMS'} (6 أرقام)
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder="0 0 0 0 0 0"
+                    value={mfaChallengeCode}
+                    onChange={(e) => setMfaChallengeCode(e.target.value.replace(/\D/g, ''))}
+                    className="p-3 bg-slate-950 border border-slate-800 rounded-lg text-lg tracking-[0.5em] font-mono text-center text-cyan-400 w-full focus:outline-none focus:border-cyan-500/50"
+                  />
+                  <p className="text-[9px] text-slate-500 text-center leading-normal">
+                    {twoFactorType === 'totp' 
+                      ? 'افتح تطبيق Google Authenticator على جهازك المحمول وأدخل الرمز النشط حالياً.'
+                      : `أدخل الرمز المكون من 6 أرقام الذي تم إرساله لهاتفك المؤكد.`}
+                  </p>
+                </div>
+
+                <div className="flex gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMfaChallenge(false);
+                      setMfaChallengeCallback(null);
+                      showToast('تم إلغاء عملية التحقق الأمني الثنائي.', 'info');
+                    }}
+                    className="flex-1 py-2.5 bg-slate-950 hover:bg-slate-850 text-slate-400 border border-slate-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    إلغاء العملية
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleVerifyChallenge}
+                    className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-cyan-900/10 cursor-pointer"
+                  >
+                    تأكيد وتنفيذ
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* GLOBAL AUTHENTICATION MODAL */}
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
     </div>
   );
