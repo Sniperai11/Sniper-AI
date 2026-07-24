@@ -1,74 +1,59 @@
-import { SaaSSubscription, AuditLog } from '../../types';
-
-// Centralized helper for API requests
-export async function apiRequest<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options?.headers || {}),
-    },
-  });
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `API Error: ${response.status}`);
-  }
-  return response.json() as Promise<T>;
-}
+import { httpClient } from './client';
+import { AuditLog } from '../../types';
 
 export const usersApi = {
-  getProfile: () => apiRequest<any>('/api/user/profile'),
+  getProfile: async () => {
+    const res = await httpClient.get('/user/profile');
+    return res.data?.data || res.data;
+  },
 
-  login: (email: string, password?: string, mode?: string) =>
-    apiRequest<any>('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password, mode }),
-    }),
+  login: async (email: string, password?: string, mode?: string) => {
+    const res = await httpClient.post('/auth/login', { email, password, mode });
+    return res.data?.data || res.data;
+  },
 
-  register: (name: string, email: string, companyName?: string, password?: string, mode?: string, role?: string) =>
-    apiRequest<any>('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ name, email, companyName, password, mode, role }),
-    }),
+  register: async (name: string, email: string, companyName?: string, password?: string, mode?: string, role?: string) => {
+    const res = await httpClient.post('/auth/register', { name, email, companyName, password, mode, role });
+    return res.data?.data || res.data;
+  },
 
-  logout: () =>
-    apiRequest<any>('/api/auth/logout', {
-      method: 'POST',
-    }),
-  
-  switchUser: (userId: string) => 
-    apiRequest<any>('/api/user/switch', {
-      method: 'POST',
-      body: JSON.stringify({ userId }),
-    }),
+  logout: async () => {
+    const res = await httpClient.post('/auth/logout');
+    return res.data?.data || res.data;
+  },
 
-  updateTeamRole: (memberId: string, role: string) =>
-    apiRequest<any>('/api/team/role', {
-      method: 'POST',
-      body: JSON.stringify({ memberId, role }),
-    }),
+  switchUser: async (userId: string) => {
+    const res = await httpClient.post('/user/switch', { userId });
+    return res.data?.data || res.data;
+  },
 
-  addTeamMember: (name: string, email: string, role: string) =>
-    apiRequest<any>('/api/team/add', {
-      method: 'POST',
-      body: JSON.stringify({ name, email, role }),
-    }),
+  updateTeamRole: async (memberId: string, role: string) => {
+    const res = await httpClient.post('/team/role', { memberId, role });
+    return res.data?.data || res.data;
+  },
 
-  deleteTeamMember: (memberId: string) =>
-    apiRequest<any>(`/api/team/${memberId}`, {
-      method: 'DELETE',
-    }),
+  addTeamMember: async (name: string, email: string, role: string) => {
+    const res = await httpClient.post('/team/add', { name, email, role });
+    return res.data?.data || res.data;
+  },
 
-  upgradeSubscription: (planName: string) =>
-    apiRequest<any>('/api/subscription/upgrade', {
-      method: 'POST',
-      body: JSON.stringify({ planName }),
-    }),
+  deleteTeamMember: async (memberId: string) => {
+    const res = await httpClient.delete(`/team/${memberId}`);
+    return res.data?.data || res.data;
+  },
 
-  getAuditLogs: () => apiRequest<AuditLog[]>('/api/audit-logs'),
+  upgradeSubscription: async (planName: string) => {
+    const res = await httpClient.post('/subscription/upgrade', { planName });
+    return res.data?.data || res.data;
+  },
 
-  clearAuditLogs: () =>
-    apiRequest<any>('/api/audit-logs/clear', {
-      method: 'POST',
-    }),
+  getAuditLogs: async () => {
+    const res = await httpClient.get('/audit-logs');
+    return res.data?.data || res.data || [];
+  },
+
+  clearAuditLogs: async () => {
+    const res = await httpClient.post('/audit-logs/clear');
+    return res.data?.data || res.data;
+  },
 };

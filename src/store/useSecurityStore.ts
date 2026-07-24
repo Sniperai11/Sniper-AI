@@ -15,21 +15,21 @@ import {
 import { usersApi } from '../services/api/usersApi';
 import { projectsApi } from '../services/api/projectsApi';
 import { scanApi } from '../services/api/scanApi';
-import { reportApi, chatApi } from '../services/api/reportApi';
+import { reportApi } from '../services/api/reportApi';
 
-export interface ToastItem {
-  id: string;
-  message: string;
-  type: 'success' | 'error' | 'warning' | 'info';
-}
+import { useUIStore, ToastItem } from '../stores/uiStore';
+import { useAuthStore } from '../stores/authStore';
+import { useProjectStore } from '../stores/projectStore';
+import { useScanStore } from '../stores/scanStore';
+import { useFindingStore } from '../stores/findingStore';
+import { useReportStore } from '../stores/reportStore';
+import { useChatStore, ChatMessage } from '../stores/chatStore';
+import { useBugBountyStore } from '../stores/bugBountyStore';
+import { useAuditStore } from '../stores/auditStore';
 
-export interface ChatMessage {
-  sender: 'user' | 'assistant';
-  text: string;
-  timestamp: string;
-}
+export type { ToastItem, ChatMessage };
 
-interface SecurityState {
+export interface SecurityState {
   // Authentication & Session
   userProfile: UserProfile | null;
   userMode: UserMode;
@@ -76,7 +76,7 @@ interface SecurityState {
   register: (payload: { name: string; email: string; companyName?: string; password?: string; mode?: string; role?: string }) => Promise<void>;
   logout: () => Promise<void>;
   
-  // Specific Domain Actions
+  // Domain Actions
   triggerScan: (targetId: string, scannerType?: string) => Promise<void>;
   performSelfHealing: (vulnId: string) => Promise<void>;
   createProject: (name: string, description: string) => Promise<void>;
@@ -91,57 +91,43 @@ interface SecurityState {
 }
 
 export const useSecurityStore = create<SecurityState>((set, get) => ({
-  userProfile: null,
-  userMode: 'company',
-  activeTab: 'dashboard',
+  // State getters delegated / mirrored from sub-stores for full backwards compatibility
+  get userProfile() { return useAuthStore.getState().userProfile; },
+  get userMode() { return useUIStore.getState().userMode; },
+  get activeTab() { return useUIStore.getState().activeTab; },
 
-  projects: [],
-  vulnerabilities: [],
-  activeScans: [],
-  auditLogs: [],
-  reportsHistory: [],
-  activeReport: null,
+  get projects() { return useProjectStore.getState().projects; },
+  get vulnerabilities() { return useFindingStore.getState().vulnerabilities; },
+  get activeScans() { return useScanStore.getState().activeScans; },
+  get auditLogs() { return useAuditStore.getState().auditLogs; },
+  get reportsHistory() { return useReportStore.getState().reportsHistory; },
+  get activeReport() { return useReportStore.getState().activeReport; },
 
-  bbPrograms: [],
-  bbLeaderboard: [],
-  bbSubmissions: [],
-  bountyReportDraft: null,
-  bountyReportLoading: false,
+  get bbPrograms() { return useBugBountyStore.getState().bbPrograms; },
+  get bbLeaderboard() { return useBugBountyStore.getState().bbLeaderboard; },
+  get bbSubmissions() { return useBugBountyStore.getState().bbSubmissions; },
+  get bountyReportDraft() { return useBugBountyStore.getState().bountyReportDraft; },
+  get bountyReportLoading() { return useBugBountyStore.getState().bountyReportLoading; },
 
-  chatMessages: [
-    {
-      sender: 'assistant',
-      text: 'مرحباً بك في مستشار الأمن السيبراني الذكي لمنصة Sniper AI Security. كيف يمكنني مساعدتك في تدقيق الأكواد أو تقييم الثغرات الآن؟',
-      timestamp: new Date().toISOString()
-    }
-  ],
-  isChatSending: false,
+  get chatMessages() { return useChatStore.getState().chatMessages; },
+  get isChatSending() { return useChatStore.getState().isChatSending; },
 
-  twoFactorEnabled: true,
-  twoFactorType: 'app',
-  twoFactorPhone: '+966501234567',
+  get twoFactorEnabled() { return useAuthStore.getState().twoFactorEnabled; },
+  get twoFactorType() { return useAuthStore.getState().twoFactorType; },
+  get twoFactorPhone() { return useAuthStore.getState().twoFactorPhone; },
 
-  isLoading: false,
-  actionLoading: null,
-  toasts: [],
+  get isLoading() { return useUIStore.getState().isLoading; },
+  get actionLoading() { return useUIStore.getState().actionLoading; },
+  get toasts() { return useUIStore.getState().toasts; },
 
-  setActiveTab: (tab) => set({ activeTab: tab }),
-  setUserMode: (mode) => set({ userMode: mode }),
+  setActiveTab: (tab) => useUIStore.getState().setActiveTab(tab),
+  setUserMode: (mode) => useUIStore.getState().setUserMode(mode),
 
-  addToast: (message, type = 'info') => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-    set((state) => ({ toasts: [...state.toasts, { id, message, type }] }));
-    setTimeout(() => {
-      get().removeToast(id);
-    }, 4000);
-  },
-
-  removeToast: (id) => {
-    set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
-  },
+  addToast: (message, type) => useUIStore.getState().addToast(message, type),
+  removeToast: (id) => useUIStore.getState().removeToast(id),
 
   fetchAllData: async () => {
-    set({ isLoading: true });
+    useUIStore.getState().setIsLoading(true);
     try {
       const [profileRes, projRes, vulnRes, scanRes, logRes, reportHistRes, bountyRes] = await Promise.all([
         usersApi.getProfile().catch(() => null),
@@ -175,7 +161,7 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
         role: String(user.role || baseProfile.role || 'admin').toLowerCase(),
         mode: baseProfile.mode || 'company',
         plan: baseProfile.subscription?.plan || baseProfile.plan || 'ENTERPRISE',
-        permissions: baseProfile.permissions || ['ALL_ACCESS', 'SCAN_EXECUTE', 'SELF_HEALING', 'BOUNTY_REVIEW'],
+        permissions: Array.isArray(baseProfile.permissions) ? baseProfile.permissions : ['ALL_ACCESS', 'SCAN_EXECUTE', 'SELF_HEALING', 'BOUNTY_REVIEW'],
         user,
         company: baseProfile.company || {
           name: 'شركة أرامكو السعودية للأمن الرقمي',
@@ -196,7 +182,7 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
             aiConsultationsRemaining: 920
           }
         },
-        teamMembers: baseProfile.teamMembers || [
+        teamMembers: Array.isArray(baseProfile.teamMembers) ? baseProfile.teamMembers : [
           {
             id: user.id || 'tm-1',
             name: user.name || 'المشرف الأمني الرئيسي',
@@ -207,217 +193,97 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
         ]
       };
 
-      set({
-        userProfile: validProfile,
-        projects: Array.isArray((projRes as any)?.data) ? (projRes as any).data : (Array.isArray(projRes) ? projRes : []),
-        vulnerabilities: Array.isArray((vulnRes as any)?.data) ? (vulnRes as any).data : (Array.isArray(vulnRes) ? vulnRes : []),
-        activeScans: Array.isArray((scanRes as any)?.data) ? (scanRes as any).data : (Array.isArray(scanRes) ? scanRes : []),
-        auditLogs: Array.isArray((logRes as any)?.data) ? (logRes as any).data : (Array.isArray(logRes) ? logRes : []),
-        reportsHistory: Array.isArray((reportHistRes as any)?.data) ? (reportHistRes as any).data : (Array.isArray(reportHistRes) ? reportHistRes : []),
-        bbPrograms: bbData.programs || [],
-        bbLeaderboard: bbData.leaderboard || [],
-        bbSubmissions: bbData.submissions || [],
-        isLoading: false
-      });
+      const extractArray = (res: any) => {
+        if (Array.isArray(res)) return res;
+        if (res && Array.isArray(res.data)) return res.data;
+        return [];
+      };
+
+      useAuthStore.getState().setUserProfile(validProfile);
+      useProjectStore.getState().setProjects(extractArray(projRes));
+      useFindingStore.getState().setVulnerabilities(extractArray(vulnRes));
+      useScanStore.getState().setActiveScans(extractArray(scanRes));
+      useAuditStore.getState().setAuditLogs(extractArray(logRes));
+      useReportStore.getState().setReportsHistory(extractArray(reportHistRes));
+      useBugBountyStore.getState().setBountyData(bbData);
+
+      // Trigger re-render for subscribers listening to root store
+      set({ ...useSecurityStore.getState() });
     } catch (err: any) {
       console.error('Error fetching security data:', err);
-      set({ isLoading: false });
+    } finally {
+      useUIStore.getState().setIsLoading(false);
+      set({ ...useSecurityStore.getState() });
     }
   },
 
   login: async (email, password, mode) => {
-    set({ actionLoading: 'auth_login' });
-    try {
-      const res = await usersApi.login(email, password, mode);
-      get().addToast('تم تسجيل الدخول وتوثيق الجلسة بنجاح!', 'success');
-      await get().fetchAllData();
-    } catch (err: any) {
-      get().addToast(err.message || 'فشلت عملية تسجيل الدخول', 'error');
-      throw err;
-    } finally {
-      set({ actionLoading: null });
-    }
+    await useAuthStore.getState().login(email, password, mode);
+    await get().fetchAllData();
   },
 
-  register: async ({ name, email, companyName, password, mode, role }) => {
-    set({ actionLoading: 'auth_register' });
-    try {
-      const res = await usersApi.register(name, email, companyName, password, mode, role);
-      get().addToast('تم إنشاء الحساب وتوثيق الجلسة بنجاح!', 'success');
-      await get().fetchAllData();
-    } catch (err: any) {
-      get().addToast(err.message || 'فشل إنشاء الحساب الجديد', 'error');
-      throw err;
-    } finally {
-      set({ actionLoading: null });
-    }
+  register: async (payload) => {
+    await useAuthStore.getState().register(payload);
+    await get().fetchAllData();
   },
 
   logout: async () => {
-    set({ actionLoading: 'auth_logout' });
-    try {
-      await usersApi.logout();
-      set({ userProfile: null });
-      get().addToast('تم تسجيل الخروج بنجاح.', 'info');
-    } catch (err: any) {
-      set({ userProfile: null });
-      get().addToast('تم إنهاء الجلسة.', 'info');
-    } finally {
-      set({ actionLoading: null });
-    }
+    await useAuthStore.getState().logout();
+    set({ ...useSecurityStore.getState() });
   },
 
   triggerScan: async (targetId, scannerType) => {
-    set({ actionLoading: `scan-${targetId}` });
-    try {
-      await scanApi.startTargetScan(targetId, { scanType: scannerType || 'FULL' });
-      get().addToast('تم إطلاق فحص الأمان المتطور وحصل الاتصال بمحركات المسح المباشرة.', 'success');
-      await get().fetchAllData();
-    } catch (err: any) {
-      get().addToast(err.message || 'فشل إطلاق الفحص الأمني', 'error');
-    } finally {
-      set({ actionLoading: null });
-    }
+    await useScanStore.getState().triggerScan(targetId, scannerType);
+    await get().fetchAllData();
   },
 
   performSelfHealing: async (vulnId) => {
-    set({ actionLoading: `healing-${vulnId}` });
-    try {
-      await scanApi.performRemediation(vulnId);
-      get().addToast('تم تطبيق الشفاء الذاتي والأمان التلقائي وتصحيح الكود المصدر بنجاح!', 'success');
-      await get().fetchAllData();
-    } catch (err: any) {
-      get().addToast(err.message || 'فشلت عملية الترميم التلقائي', 'error');
-    } finally {
-      set({ actionLoading: null });
-    }
+    await useFindingStore.getState().performSelfHealing(vulnId);
+    await get().fetchAllData();
   },
 
   createProject: async (name, description) => {
-    set({ actionLoading: 'createProject' });
-    try {
-      const created = await projectsApi.createProject(name, description);
-      get().addToast(`تم إنشاء المشروع "${created.name}" بنجاح.`, 'success');
-      await get().fetchAllData();
-    } catch (err: any) {
-      get().addToast(err.message || 'فشل إنشاء المشروع', 'error');
-    } finally {
-      set({ actionLoading: null });
-    }
+    await useProjectStore.getState().createProject(name, description);
+    await get().fetchAllData();
   },
 
   addTargetToProject: async (projectId, name, url, type, bountyPlatform) => {
-    set({ actionLoading: 'addTarget' });
-    try {
-      const added = await projectsApi.addTargetToProject(projectId, name, url, type, bountyPlatform);
-      get().addToast(`تم إضافة الهدف "${added.name}" وهو الآن في انتظار تأكيد الملكية.`, 'success');
-      await get().fetchAllData();
-    } catch (err: any) {
-      get().addToast(err.message || 'فشل إضافة الهدف', 'error');
-    } finally {
-      set({ actionLoading: null });
-    }
+    await useProjectStore.getState().addTargetToProject(projectId, name, url, type, bountyPlatform);
+    await get().fetchAllData();
   },
 
   generateReport: async (projectId, logo, prefix) => {
-    set({ actionLoading: 'generating_report' });
-    try {
-      const report = await reportApi.createReport(projectId, logo, prefix);
-      set({ activeReport: report });
-      get().addToast('تم توليد التقرير الأمني المعتمد للشركة بنجاح!', 'success');
-      await get().fetchAllData();
-    } catch (err: any) {
-      get().addToast(err.message || 'فشل توليد التقرير الأمني', 'error');
-    } finally {
-      set({ actionLoading: null });
-    }
+    await useReportStore.getState().generateReport(projectId, logo, prefix);
+    await get().fetchAllData();
   },
 
   sendChatMessage: async (message) => {
-    const currentMessages = get().chatMessages;
-    set({
-      isChatSending: true,
-      chatMessages: [
-        ...currentMessages,
-        { sender: 'user', text: message, timestamp: new Date().toISOString() }
-      ]
-    });
-
-    try {
-      const answer = await chatApi.sendMessageToAdvisor(message, currentMessages);
-      const reply = answer.data?.reply || answer.message || 'تم استلام الاستفسار وسيتم التدقيق السيبراني.';
-      set((state) => ({
-        chatMessages: [
-          ...state.chatMessages,
-          { sender: 'assistant', text: reply, timestamp: new Date().toISOString() }
-        ]
-      }));
-    } catch (err: any) {
-      get().addToast(err.message || 'فشل الاتصال بالمستشار السيبراني', 'error');
-    } finally {
-      set({ isChatSending: false });
-    }
+    await useChatStore.getState().sendChatMessage(message);
+    set({ ...useSecurityStore.getState() });
   },
 
   upgradeSubscription: async (planName) => {
-    set({ actionLoading: 'upgradeSubscription' });
-    try {
-      await usersApi.upgradeSubscription(planName);
-      get().addToast(`تم ترقية الاشتراك بنجاح إلى باقة ${planName}!`, 'success');
-      await get().fetchAllData();
-    } catch (err: any) {
-      get().addToast(err.message || 'فشلت عملية ترقية الاشتراك', 'error');
-    } finally {
-      set({ actionLoading: null });
-    }
+    await useAuthStore.getState().upgradeSubscription(planName);
+    await get().fetchAllData();
   },
 
   clearAuditLogs: async () => {
-    try {
-      await usersApi.clearAuditLogs();
-      get().addToast('تم تصفير سجلات التدقيق بنجاح.', 'success');
-      await get().fetchAllData();
-    } catch (err: any) {
-      get().addToast(err.message || 'فشل تصفير السجلات', 'error');
-    }
+    await useAuditStore.getState().clearAuditLogs();
+    await get().fetchAllData();
   },
 
   submitBountyReport: async (payload) => {
-    set({ actionLoading: 'submitBounty' });
-    try {
-      await reportApi.submitBountyReport(payload);
-      get().addToast('تم إرسال بلاغ الثغرة الفني بنجاح صوناً للخصوصية والأمن المالي للشركاء.', 'success');
-      await get().fetchAllData();
-    } catch (err: any) {
-      get().addToast(err.message || 'فشل إرسال البلاغ', 'error');
-    } finally {
-      set({ actionLoading: null });
-    }
+    await useBugBountyStore.getState().submitBountyReport(payload);
+    await get().fetchAllData();
   },
 
-  reviewBountyReport: async (submissionId, status, points = 0, reward = 0) => {
-    set({ actionLoading: `review-${submissionId}` });
-    try {
-      await reportApi.reviewBountyReport(submissionId, status, points, reward);
-      get().addToast('تم تحديث ومراجعة البلاغ الأمني وحساب المكافآت بنجاح.', 'success');
-      await get().fetchAllData();
-    } catch (err: any) {
-      get().addToast(err.message || 'فشلت مراجعة البلاغ', 'error');
-    } finally {
-      set({ actionLoading: null });
-    }
+  reviewBountyReport: async (submissionId, status, points, reward) => {
+    await useBugBountyStore.getState().reviewBountyReport(submissionId, status, points, reward);
+    await get().fetchAllData();
   },
 
   generateBountyDraft: async (payload) => {
-    set({ bountyReportLoading: true });
-    try {
-      const res = await reportApi.aiGenerateBountyDraft(payload);
-      set({ bountyReportDraft: res.success ? res.data?.report : null });
-      get().addToast('تمت صياغة تقرير الثغرة الاحترافي بالذكاء الاصطناعي بنجاح!', 'success');
-    } catch (err: any) {
-      get().addToast(err.message || 'فشلت صياغة التقرير بالذكاء الاصطناعي', 'error');
-    } finally {
-      set({ bountyReportLoading: false });
-    }
+    await useBugBountyStore.getState().generateBountyDraft(payload);
+    set({ ...useSecurityStore.getState() });
   }
 }));

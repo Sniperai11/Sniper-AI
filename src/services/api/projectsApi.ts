@@ -1,44 +1,29 @@
+import { httpClient } from './client';
 import { SecurityProject, SecurityTarget } from '../../types';
 
-async function apiRequest<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options?.headers || {}),
-    },
-  });
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `API Error: ${response.status}`);
-  }
-  return response.json() as Promise<T>;
-}
-
 export const projectsApi = {
-  getProjects: () => apiRequest<SecurityProject[]>('/api/projects'),
+  getProjects: async () => {
+    const res = await httpClient.get('/projects');
+    return res.data?.data || res.data || [];
+  },
 
-  createProject: (name: string, description: string) =>
-    apiRequest<SecurityProject>('/api/projects/create', {
-      method: 'POST',
-      body: JSON.stringify({ name, description }),
-    }),
+  createProject: async (name: string, description: string) => {
+    const res = await httpClient.post('/projects/create', { name, description });
+    return res.data?.data || res.data;
+  },
 
-  addTargetToProject: (projectId: string, name: string, url: string, type: string, bountyPlatform?: string) =>
-    apiRequest<SecurityTarget>(`/api/projects/${projectId}/targets/add`, {
-      method: 'POST',
-      body: JSON.stringify({ name, url, type, bountyPlatform }),
-    }),
+  addTargetToProject: async (projectId: string, name: string, url: string, type: string, bountyPlatform?: string) => {
+    const res = await httpClient.post(`/projects/${projectId}/targets/add`, { name, url, type, bountyPlatform });
+    return res.data?.data || res.data;
+  },
 
-  verifyTargetOwnership: (targetId: string, token: string) =>
-    apiRequest<any>(`/api/targets/${targetId}/verify`, {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-    }),
+  verifyTargetOwnership: async (targetId: string, token: string) => {
+    const res = await httpClient.post(`/targets/${targetId}/verify`, { token });
+    return res.data?.data || res.data;
+  },
 
-  verifyBountyTarget: (targetId: string, proofUrl: string) =>
-    apiRequest<any>(`/api/targets/${targetId}/verify-bounty`, {
-      method: 'POST',
-      body: JSON.stringify({ proofUrl }),
-    }),
+  verifyBountyTarget: async (targetId: string, proofUrl: string) => {
+    const res = await httpClient.post(`/targets/${targetId}/verify-bounty`, { proofUrl });
+    return res.data?.data || res.data;
+  },
 };

@@ -1,50 +1,41 @@
+import { httpClient } from './client';
 import { SecurityReport } from '../../types';
 
-async function apiRequest<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options?.headers || {}),
-    },
-  });
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `API Error: ${response.status}`);
-  }
-  return response.json() as Promise<T>;
-}
-
 export const reportApi = {
-  createReport: (projectId: string, companyLogo?: string | null, titlePrefix?: string) =>
-    apiRequest<SecurityReport>(`/api/projects/${projectId}/report?logo=${encodeURIComponent(companyLogo || '')}&prefix=${encodeURIComponent(titlePrefix || '')}`),
+  createReport: async (projectId: string, companyLogo?: string | null, titlePrefix?: string) => {
+    const res = await httpClient.get(`/projects/${projectId}/report?logo=${encodeURIComponent(companyLogo || '')}&prefix=${encodeURIComponent(titlePrefix || '')}`);
+    return res.data?.data || res.data;
+  },
 
-  getReportsHistory: () => apiRequest<any[]>('/api/reports/history'),
+  getReportsHistory: async () => {
+    const res = await httpClient.get('/reports/history');
+    return res.data?.data || res.data || [];
+  },
 
-  getBountyData: () => apiRequest<any>('/api/bugbounty/data'),
+  getBountyData: async () => {
+    const res = await httpClient.get('/bugbounty/data');
+    return res.data?.data || res.data;
+  },
 
-  submitBountyReport: (payload: any) =>
-    apiRequest<any>('/api/bugbounty/submit', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
+  submitBountyReport: async (payload: any) => {
+    const res = await httpClient.post('/bugbounty/submit', payload);
+    return res.data?.data || res.data;
+  },
 
-  reviewBountyReport: (submissionId: string, status: string, points: number, reward: number) =>
-    apiRequest<any>(`/api/bugbounty/submissions/${submissionId}/review`, {
-      method: 'POST',
-      body: JSON.stringify({ status, points, reward }),
-    }),
+  reviewBountyReport: async (submissionId: string, status: string, points: number, reward: number) => {
+    const res = await httpClient.post(`/bugbounty/submissions/${submissionId}/review`, { status, points, reward });
+    return res.data?.data || res.data;
+  },
 
-  aiGenerateBountyDraft: (payload: any) =>
-    apiRequest<any>('/api/bugbounty/generate-report', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
+  aiGenerateBountyDraft: async (payload: any) => {
+    const res = await httpClient.post('/bugbounty/generate-report', payload);
+    return res.data;
+  },
 };
+
 export const chatApi = {
-  sendMessageToAdvisor: (message: string, history: any[]) =>
-    apiRequest<any>('/api/chat', {
-      method: 'POST',
-      body: JSON.stringify({ message, history }),
-    }),
+  sendMessageToAdvisor: async (message: string, history: any[]) => {
+    const res = await httpClient.post('/chat', { message, history });
+    return res.data;
+  },
 };
