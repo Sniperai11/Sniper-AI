@@ -72,20 +72,24 @@ export default function SecurityTerminal({
     }
 
     // Append standard completed summary if state changed to completed
-    if (scanJob.status === 'Completed' && lastLoggedIndexRef.current === currentLogs.length && !terminalLines.includes(`[+] [AUDIT COMPLETED] تم إنهاء الفحص بنجاح للهدف ${target?.name || ''}`)) {
+    if (scanJob.status === 'Completed' && lastLoggedIndexRef.current === currentLogs.length) {
       const timeStr = new Date().toLocaleTimeString('ar-EG', { hour12: false });
-      setTerminalLines(prev => [
-        ...prev,
-        `[${timeStr}] [+] [AUDIT COMPLETED] تم إنهاء الفحص بنجاح للهدف ${target?.name || ''}`,
-        `[${timeStr}] [+] إجمالي الثغرات النشطة المكتشفة: ${
-          (scanJob.vulnerabilitiesFoundCount?.Critical || 0) +
-          (scanJob.vulnerabilitiesFoundCount?.High || 0) +
-          (scanJob.vulnerabilitiesFoundCount?.Medium || 0) +
-          (scanJob.vulnerabilitiesFoundCount?.Low || 0)
-        } ثغرة أمنية (حرجة: ${scanJob.vulnerabilitiesFoundCount?.Critical || 0} | عالية: ${scanJob.vulnerabilitiesFoundCount?.High || 0})`
-      ]);
+      const completedLog = `[${timeStr}] [+] [AUDIT COMPLETED] تم إنهاء الفحص بنجاح للهدف ${target?.name || ''}`;
+      setTerminalLines(prev => {
+        if (prev.includes(completedLog)) return prev;
+        return [
+          ...prev,
+          completedLog,
+          `[${timeStr}] [+] إجمالي الثغرات النشطة المكتشفة: ${
+            (scanJob.vulnerabilitiesFoundCount?.Critical || 0) +
+            (scanJob.vulnerabilitiesFoundCount?.High || 0) +
+            (scanJob.vulnerabilitiesFoundCount?.Medium || 0) +
+            (scanJob.vulnerabilitiesFoundCount?.Low || 0)
+          } ثغرة أمنية (حرجة: ${scanJob.vulnerabilitiesFoundCount?.Critical || 0} | عالية: ${scanJob.vulnerabilitiesFoundCount?.High || 0})`
+        ];
+      });
     }
-  }, [scanJob, isPaused, target]);
+  }, [scanJob, isPaused, target?.name]);
 
   // Reset log reference index when target changes
   useEffect(() => {

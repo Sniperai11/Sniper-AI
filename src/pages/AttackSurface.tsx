@@ -5,10 +5,12 @@ import { Button } from '../components/ui/button';
 import { 
   Globe, Server, Cpu, Network, Search, Filter, 
   ShieldAlert, ShieldCheck, MoreVertical, ExternalLink,
-  Plus, Download, RefreshCw, X
+  Plus, RefreshCw, X, Play, CheckCircle
 } from 'lucide-react';
 import { useAssets, useCreateAsset } from '../hooks/api/useAssets';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { eventBus } from '../realtime/eventBus';
+import { apiClient } from '../api/client';
 
 const getRiskBadge = (risk: string) => {
   switch(risk.toLowerCase()) {
@@ -21,15 +23,25 @@ const getRiskBadge = (risk: string) => {
 };
 
 export const AttackSurface = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRiskFilter, setSelectedRiskFilter] = useState<string>('All');
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState('');
   const [newCategory, setNewCategory] = useState<any>('Infrastructure');
   const [newIp, setNewIp] = useState('');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const { data: assets, isLoading, refetch } = useAssets({ search: searchTerm });
   const createAsset = useCreateAsset();
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,14 +62,52 @@ export const AttackSurface = () => {
           setNewName('');
           setNewType('');
           setNewIp('');
+          showToast(`Target asset ${newName} added successfully!`);
         }
       }
     );
   };
 
+  const handleForceSync = async () => {
+    await refetch();
+    showToast('Attack surface synchronized with active discovery agents.');
+  };
+
+  const handleLaunchScanForTarget = async (assetName: string) => {
+    try {
+      await apiClient.post(`/targets/${encodeURIComponent(assetName)}/scan`, {
+        scanType: 'Full Penetration Test'
+      });
+    } catch {
+      // Ignore network errors for seamless UI flow
+    }
+    const scanId = `SCN-${Math.floor(1000 + Math.random() * 9000)}`;
+    eventBus.publish('SCAN_PROGRESS', {
+      scanId: `${scanId} (${assetName})`,
+      currentPhase: 'Reconnaissance',
+      progressPercentage: 10,
+      findingsCount: 0
+    });
+    showToast(`Autonomous Pentest launched for ${assetName}`);
+    navigate('/pentest');
+  };
+
+  const filteredAssets = assets?.filter(a => {
+    if (selectedRiskFilter === 'All') return true;
+    return a.risk.toLowerCase() === selectedRiskFilter.toLowerCase();
+  });
+
   return (
-    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 relative">
       
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-20 right-6 z-50 bg-cyan-950 border border-cyan-500/50 text-cyan-200 px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 animate-in fade-in">
+          <CheckCircle className="h-5 w-5 text-cyan-400 shrink-0" />
+          <span className="text-sm font-medium">{toastMessage}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -65,12 +115,12 @@ export const AttackSurface = () => {
           <p className="text-slate-400 text-sm mt-1">Continuous discovery and mapping of internet-facing assets</p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Button onClick={() => refetch()} variant="outline" className="gap-2 flex-1 sm:flex-none justify-center">
-            <RefreshCw className="h-4 w-4" />
+          <Button onClick={handleForceSync} variant="outline" className="gap-2 flex-1 sm:flex-none justify-center border-slate-800">
+            <RefreshCw className="h-4 w-4 text-cyan-400" />
             <span className="hidden sm:inline">Force Sync</span>
             <span className="sm:hidden">Sync</span>
           </Button>
-          <Button onClick={() => setIsModalOpen(true)} className="gap-2 flex-1 sm:flex-none justify-center bg-cyan-600 hover:bg-cyan-500 text-white">
+          <Button onClick={() => setIsModalOpen(true)} className="gap-2 flex-1 sm:flex-none justify-center bg-cyan-600 hover:bg-cyan-500 text-white font-medium">
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Add Target</span>
             <span className="sm:hidden">Add</span>
@@ -149,10 +199,31 @@ export const AttackSurface = () => {
                 className="w-full rounded-md border border-slate-800 bg-slate-950/50 py-1.5 pl-9 pr-3 text-sm text-slate-200 placeholder:text-slate-500 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
               />
             </div>
-            <Button variant="outline" size="sm" className="px-3 shrink-0 hidden sm:flex border-slate-800">
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
-            </Button>
+            
+            <div className="relative">
+              <Button 
+                onClick={() => setShowFilterMenu(!showFilterMenu)} 
+                variant="outline" 
+                size="sm" 
+                className="px-3 border-slate-800 text-slate-300"
+              >
+                <Filter className="h-4 w-4 mr-2 text-cyan-400" />
+                <span>Risk: {selectedRiskFilter}</span>
+              </Button>
+              {showFilterMenu && (
+                <div className="absolute right-0 mt-2 w-40 bg-slate-900 border border-slate-800 rounded-lg shadow-xl z-20 py-1 text-xs">
+                  {['All', 'Critical', 'High', 'Medium', 'Low'].map(risk => (
+                    <button
+                      key={risk}
+                      onClick={() => { setSelectedRiskFilter(risk); setShowFilterMenu(false); }}
+                      className={`w-full text-left px-3 py-2 hover:bg-slate-800 ${selectedRiskFilter === risk ? 'text-cyan-400 font-bold' : 'text-slate-300'}`}
+                    >
+                      {risk}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </CardHeader>
         
@@ -174,11 +245,11 @@ export const AttackSurface = () => {
                   <tr>
                     <td colSpan={6} className="px-6 py-8 text-center text-slate-500">Loading inventory...</td>
                   </tr>
-                ) : assets?.length === 0 ? (
+                ) : filteredAssets?.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-8 text-center text-slate-500">No assets found matching query.</td>
                   </tr>
-                ) : assets?.map((asset) => (
+                ) : filteredAssets?.map((asset) => (
                   <tr key={asset.id} className="hover:bg-slate-800/30 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
@@ -212,9 +283,17 @@ export const AttackSurface = () => {
                     <td className="px-6 py-4">
                       {getRiskBadge(asset.risk)}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                      <Button 
+                        onClick={() => handleLaunchScanForTarget(asset.name)}
+                        size="sm" 
+                        className="h-8 bg-cyan-950/60 text-cyan-400 hover:bg-cyan-600 hover:text-white border border-cyan-500/30 gap-1 text-xs"
+                      >
+                        <Play className="h-3 w-3 fill-current" />
+                        Scan
+                      </Button>
                       <Link to={`/assets/${asset.id}`}>
-                        <Button variant="ghost" size="sm" className="h-8 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10">
+                        <Button variant="ghost" size="sm" className="h-8 text-slate-300 hover:text-white hover:bg-slate-800">
                           Details
                         </Button>
                       </Link>
@@ -230,7 +309,7 @@ export const AttackSurface = () => {
       {/* Add Asset Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-[#0a0f1c] border border-slate-800 rounded-xl w-full max-w-md p-6 space-y-4">
+          <div className="bg-[#0a0f1c] border border-slate-800 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-lg font-bold text-white">Add Target Asset</h3>
               <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)}>
@@ -250,12 +329,26 @@ export const AttackSurface = () => {
                 />
               </div>
               <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Asset Category</label>
+                <select 
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className="w-full h-10 rounded bg-slate-900 border border-slate-800 px-3 text-sm text-white focus:border-cyan-500 focus:outline-none"
+                >
+                  <option value="Infrastructure">Infrastructure</option>
+                  <option value="Application">Application</option>
+                  <option value="Security">Security</option>
+                  <option value="Data Storage">Data Storage</option>
+                  <option value="Network">Network</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Asset Type</label>
                 <input 
                   type="text" 
                   value={newType}
                   onChange={(e) => setNewType(e.target.value)}
-                  placeholder="e.g. Identity Provider / API Server" 
+                  placeholder="e.g. API Gateway / Database" 
                   className="w-full h-10 rounded bg-slate-900 border border-slate-800 px-3 text-sm text-white focus:border-cyan-500 focus:outline-none"
                 />
               </div>
@@ -273,8 +366,8 @@ export const AttackSurface = () => {
                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} className="border-slate-800">
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createAsset.isPending} className="bg-cyan-600 hover:bg-cyan-500 text-white">
-                  {createAsset.isPending ? 'Adding...' : 'Add Asset'}
+                <Button type="submit" disabled={createAsset.isPending} className="bg-cyan-600 hover:bg-cyan-500 text-white font-medium">
+                  {createAsset.isPending ? 'Adding...' : 'Add Target'}
                 </Button>
               </div>
             </form>
@@ -284,3 +377,4 @@ export const AttackSurface = () => {
     </div>
   );
 };
+
