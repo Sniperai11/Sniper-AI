@@ -1,3 +1,4 @@
+import { Logger } from "../utils/logger";
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { scanRepository, ScanRepository } from "../repositories/ScanRepository";
@@ -130,7 +131,7 @@ export class ScanController {
       try {
         analysisText = await aiEngineService.analyzeVulnerability(vuln);
       } catch (error: any) {
-        console.error("Gemini API Error in analyzer, triggering smart local fallback:", error);
+        Logger.error("Gemini API Error in analyzer, triggering smart local fallback:", error);
         analysisText = `### تحليل ذكي افتراضي (AI Security Auditor)
 تم العثور على ثغرة **${vuln.title}** بمستوى خطورة **${vuln.severity}**.
 
@@ -194,6 +195,75 @@ const result = await db.query("SELECT * FROM payments WHERE recipient = $1", [se
       return res.status(500).json(Formatter.error(error.message));
     }
   };
+
+  /**
+   * 6. Retrieve single scan session details
+   */
+  public getScanById = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const scans = await this.scanRepo.getActiveScans();
+      const matched = scans.find(s => s.id === id);
+      if (!matched) {
+        return res.status(404).json(Formatter.error("جلسة الفحص غير موجودة"));
+      }
+      return res.json(Formatter.success(matched, "تم جلب تفاصيل جلسة الفحص بنجاح"));
+    } catch (error: any) {
+      return res.status(500).json(Formatter.error(error.message));
+    }
+  };
+
+  /**
+   * 7. Stop an active scan session
+   */
+  public stopScan = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const scans = await this.scanRepo.getActiveScans();
+      const matched = scans.find(s => s.id === id);
+      if (matched) {
+        matched.status = "Failed";
+        matched.scannerLogs.push(`[!] تم إيقاف جلسة الفحص بناءً على طلب المحلل الأمني.`);
+      }
+      return res.json(Formatter.success(matched, "تم إيقاف جلسة الفحص بنجاح"));
+    } catch (error: any) {
+      return res.status(500).json(Formatter.error(error.message));
+    }
+  };
+
+  /**
+   * 8. Retrieve single vulnerability details
+   */
+  public getVulnerabilityById = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const vuln = await this.scanRepo.getVulnerabilityById(id);
+      if (!vuln) {
+        return res.status(404).json(Formatter.error("الثغرة الأمنية غير موجودة"));
+      }
+      return res.json(Formatter.success(vuln, "تم جلب تفاصيل الثغرة بنجاح"));
+    } catch (error: any) {
+      return res.status(500).json(Formatter.error(error.message));
+    }
+  };
+
+  /**
+   * 9. Update owner of a vulnerability
+   */
+  public updateVulnerabilityOwner = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { owner } = req.body;
+      const vuln = await this.scanRepo.getVulnerabilityById(id);
+      if (!vuln) {
+        return res.status(404).json(Formatter.error("الثغرة الأمنية غير موجودة"));
+      }
+      (vuln as any).owner = owner || "SecOps Analyst";
+      return res.json(Formatter.success(vuln, "تم تحديث المسؤول عن الثغرة بنجاح"));
+    } catch (error: any) {
+      return res.status(500).json(Formatter.error(error.message));
+    }
+  };
 }
 
 export const scanController = new ScanController();
@@ -204,3 +274,7 @@ export const startTargetScan = scanController.startTargetScan;
 export const getVulnerabilities = scanController.getVulnerabilities;
 export const aiAnalyzeVulnerability = scanController.aiAnalyzeVulnerability;
 export const toggleVulnerabilityFalsePositive = scanController.toggleVulnerabilityFalsePositive;
+export const getScanById = scanController.getScanById;
+export const stopScan = scanController.stopScan;
+export const getVulnerabilityById = scanController.getVulnerabilityById;
+export const updateVulnerabilityOwner = scanController.updateVulnerabilityOwner;

@@ -28,8 +28,8 @@ export const AIAgents = () => {
       ...agent,
       status: live?.status || (agent.id === 'AGT-03' ? 'Idle' : 'Active'),
       currentTask: live?.currentTask || (agent.id !== 'AGT-03' ? 'Monitoring designated scopes' : 'Waiting for verified alerts'),
-      cpuUsage: live?.cpuUsage || Math.floor(Math.random() * 30 + 10),
-      memoryUsage: live?.memoryUsage || Math.floor(Math.random() * 40 + 20),
+      cpuUsage: live?.cpuUsage || (agent.id === 'AGT-01' ? 24 : agent.id === 'AGT-02' ? 18 : agent.id === 'AGT-03' ? 5 : 12),
+      memoryUsage: live?.memoryUsage || (agent.id === 'AGT-01' ? 42 : agent.id === 'AGT-02' ? 35 : agent.id === 'AGT-03' ? 15 : 28),
     };
   });
 

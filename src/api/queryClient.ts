@@ -17,12 +17,20 @@ export const queryClient = new QueryClient({
   },
   queryCache: new QueryCache({
     onError: (error) => {
-      Logger.error(`Global Query Error:`, error.message);
+      if (error?.name === 'NetworkError' || error?.message?.includes('Network Error')) {
+        Logger.warn('Query Network Note:', error.message);
+      } else {
+        Logger.error('Global Query Error:', error.message);
+      }
     }
   }),
   mutationCache: new MutationCache({
     onError: (error) => {
-      Logger.error(`Global Mutation Error:`, error.message);
+      if (error?.name === 'NetworkError' || error?.message?.includes('Network Error')) {
+        Logger.warn('Mutation Network Note:', error.message);
+      } else {
+        Logger.error('Global Mutation Error:', error.message);
+      }
     }
   })
 });

@@ -1,113 +1,66 @@
 import { apiClient } from '../client';
-import { CaseWorkflow, CaseStatus } from '../types/workflows';
-
-let mockCases: CaseWorkflow[] = [
-  {
-    id: 'CASE-2024-001',
-    title: 'Data Exfiltration Investigation',
-    status: 'In Progress',
-    leadAnalyst: 'Sarah Jenkins',
-    description: 'Investigating potential data exfiltration from customer database server.',
-    updatedAt: new Date(Date.now() - 7200000).toISOString(),
-    createdAt: new Date(Date.now() - 86400000 * 3).toISOString()
-  },
-  {
-    id: 'CASE-2024-002',
-    title: 'Compliance Audit: Q3 PCI-DSS',
-    status: 'Planning',
-    leadAnalyst: "Mike O'Connor",
-    description: 'Quarterly PCI-DSS compliance verification and assessment.',
-    updatedAt: new Date(Date.now() - 86400000).toISOString(),
-    createdAt: new Date(Date.now() - 86400000 * 5).toISOString()
-  },
-  {
-    id: 'CASE-2024-003',
-    title: 'Insider Threat Red Team Simulation',
-    status: 'Under Review',
-    leadAnalyst: 'Alex Thorne',
-    description: 'Post-simulation review of malicious insider detection capabilities.',
-    updatedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-    createdAt: new Date(Date.now() - 86400000 * 10).toISOString()
-  }
-];
+import { CaseWorkflow } from '../types/workflows';
 
 export const casesService = {
   getCases: async (params?: { search?: string; status?: string }): Promise<CaseWorkflow[]> => {
-    try {
-      const response = await apiClient.get<any>('/cases', { params });
-      return Array.isArray(response) ? response : (response.data || mockCases);
-    } catch {
-      let filtered = [...mockCases];
-      if (params?.search) {
-        const q = params.search.toLowerCase();
-        filtered = filtered.filter(c => c.title.toLowerCase().includes(q) || c.id.toLowerCase().includes(q) || c.leadAnalyst.toLowerCase().includes(q));
-      }
-      if (params?.status) {
-        filtered = filtered.filter(c => c.status === params.status);
-      }
-      return filtered;
-    }
-  },
+    const response: any = await apiClient.get('/bugbounty/data');
+    const list = Array.isArray(response?.data?.submissions)
+      ? response.data.submissions
+      : Array.isArray(response?.submissions)
+      ? response.submissions
+      : [];
+    let cases: CaseWorkflow[] = list.map((sub: any) => ({
+      id: sub.id,
+      title: sub.title || 'تقرير المكافآت الأمني',
+      status: sub.status === 'Approved' ? 'Closed' : sub.status === 'Rejected' ? 'Closed' : 'In Progress',
+      leadAnalyst: sub.researcher || 'خبير أمني',
+      description: sub.description || 'بلاغ ثغرة أمنية مقدم عبر منصة Bug Bounty',
+      createdAt: sub.createdAt || new Date().toISOString(),
+      updatedAt: sub.updatedAt || new Date().toISOString()
+    }));
 
+    if (params?.search) {
+      const q = params.search.toLowerCase();
+      cases = cases.filter((c) => c.title?.toLowerCase().includes(q) || c.id?.toLowerCase().includes(q));
+    }
+    if (params?.status) {
+      cases = cases.filter((c) => c.status === params.status);
+    }
+    return cases;
+  },
+  
   getCaseById: async (id: string): Promise<CaseWorkflow> => {
-    try {
-      const response = await apiClient.get<any>(`/cases/${id}`);
-      return response.data || response;
-    } catch {
-      const found = mockCases.find(c => c.id === id);
-      if (!found) throw new Error(`Case ${id} not found`);
-      return found;
+    const cases = await casesService.getCases();
+    const matched = cases.find(c => c.id === id);
+    if (!matched) {
+      throw new Error('الحالة غير موجودة');
     }
+    return matched;
   },
-
+  
   createCase: async (data: Partial<CaseWorkflow>): Promise<CaseWorkflow> => {
-    try {
-      const response = await apiClient.post<any>('/cases', data);
-      return response.data || response;
-    } catch {
-      const newCase: CaseWorkflow = {
-        id: `CASE-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
-        title: data.title || 'New Security Investigation',
-        status: data.status || 'Planning',
-        leadAnalyst: data.leadAnalyst || 'Admin User',
-        description: data.description || '',
-        updatedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString()
-      };
-      mockCases.unshift(newCase);
-      return newCase;
-    }
+    const response: any = await apiClient.post('/bugbounty/submit', {
+      title: data.title,
+      description: data.description
+    });
+    const created = response?.data || response;
+    return {
+      id: created.id || `CASE-${Date.now()}`,
+      title: created.title || data.title || 'حالة أمنية جديدة',
+      status: 'In Progress',
+      leadAnalyst: 'SecOps Analyst',
+      description: created.description || data.description || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
   },
-
-  updateCaseStatus: async (id: string, status: CaseStatus): Promise<CaseWorkflow> => {
-    try {
-      const response = await apiClient.patch<any>(`/cases/${id}/status`, { status });
-      return response.data || response;
-    } catch {
-      const index = mockCases.findIndex(c => c.id === id);
-      if (index !== -1) {
-        mockCases[index] = {
-          ...mockCases[index],
-          status,
-          updatedAt: new Date().toISOString()
-        };
-        return mockCases[index];
-      }
-      throw new Error(`Case ${id} not found`);
-    }
+  
+  updateCaseStatus: async (_id: string, _status: CaseWorkflow['status']): Promise<CaseWorkflow> => {
+    throw new Error('تحديث حالة البلاغ غير مدعوم مباشرة؛ يرجى المراجعة من لوحة Bug Bounty');
   },
-
-  updateCase: async (id: string, updates: Partial<CaseWorkflow>): Promise<CaseWorkflow> => {
-    try {
-      const response = await apiClient.patch<any>(`/cases/${id}`, updates);
-      return response.data || response;
-    } catch {
-      const index = mockCases.findIndex(c => c.id === id);
-      if (index !== -1) {
-        mockCases[index] = { ...mockCases[index], ...updates, updatedAt: new Date().toISOString() };
-        return mockCases[index];
-      }
-      throw new Error(`Case ${id} not found`);
-    }
+  
+  updateCase: async (_id: string, _updates: Partial<CaseWorkflow>): Promise<CaseWorkflow> => {
+    throw new Error('تحديث البلاغ غير مدعوم مباشرة في الخادم');
   }
 };
+

@@ -1,3 +1,4 @@
+import { Logger } from "../utils/logger";
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { userRepository } from "../repositories/UserRepository";
@@ -29,7 +30,7 @@ export class ChatController {
       try {
         reply = await aiEngineService.chatWithAdvisor(messages);
       } catch (error) {
-        console.error("Chat API error, triggering helpful offline response:", error);
+        Logger.error("Chat API error, triggering helpful offline response:", error);
         reply = `مرحباً بك! أنا مستشارك الذكي للأمن السيبراني. لم أتمكن من الاتصال بالخدمة السحابية الحية مؤقتاً، ولكن يسعدني تزويدك بالدعم الأمني:
 
 سؤالك رائع! يتعلق الأمن السيبراني بتطبيق أفضل الممارسات الأمنية:

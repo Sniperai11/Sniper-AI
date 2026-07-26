@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useNavigate } from 'react-router-dom';
 import { EnterpriseLayout } from '../components/layouts/EnterpriseLayout';
 import { AuthWrapper } from '../components/layouts/AuthWrapper';
 import { ErrorBoundary } from '../components/layouts/ErrorBoundary';
@@ -8,7 +8,6 @@ import { NotFound } from '../pages/NotFound';
 // Lazy loaded pages
 const CommandCenter = lazy(() => import('../pages/CommandCenter').then(m => ({ default: m.CommandCenter })));
 const AttackSurface = lazy(() => import('../pages/AttackSurface').then(m => ({ default: m.AttackSurface })));
-
 const AssetIntelligence = lazy(() => import('../pages/AssetIntelligence').then(m => ({ default: m.AssetIntelligence })));
 const AssetDetails = lazy(() => import('../pages/AssetDetails').then(m => ({ default: m.AssetDetails })));
 const AIPentest = lazy(() => import('../pages/AIPentest').then(m => ({ default: m.AIPentest })));
@@ -21,6 +20,18 @@ const Incidents = lazy(() => import('../pages/Incidents').then(m => ({ default: 
 const Cases = lazy(() => import('../pages/Cases').then(m => ({ default: m.Cases })));
 const Tasks = lazy(() => import('../pages/Tasks').then(m => ({ default: m.Tasks })));
 const RiskAnalytics = lazy(() => import('../pages/RiskAnalytics').then(m => ({ default: m.RiskAnalytics })));
+
+const LoginWrapper = () => {
+  const navigate = useNavigate();
+  return <LoginPage onNavigate={(path) => {
+    if (path === 'dashboard') navigate('/command-center');
+    else if (path === 'register') navigate('/register');
+    else if (path === 'forgot-password') navigate('/forgot-password');
+    else navigate('/');
+  }} />;
+};
+// Legacy Login Page
+const LoginPage = lazy(() => import('../legacy/features/auth/pages/LoginPage').then(m => ({ default: m.LoginPage })));
 
 // Placeholder components for routes
 const Placeholder = ({ title }: { title: string }) => (
@@ -42,6 +53,16 @@ const FallbackLoader = () => (
 );
 
 export const router = createBrowserRouter([
+  {
+    path: '/login',
+    element: (
+      <ErrorBoundary>
+        <Suspense fallback={<FallbackLoader />}>
+          <LoginWrapper />
+        </Suspense>
+      </ErrorBoundary>
+    )
+  },
   {
     path: '/',
     element: <AuthWrapper />,

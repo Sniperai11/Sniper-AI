@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useSecurityStore } from '../../../store/useSecurityStore';
+import { useSecurityStore } from '../../../../store/useSecurityStore';
 import { authService, LoginPayload, RegisterPayload } from '../services/authService';
 
 export const useAuth = () => {

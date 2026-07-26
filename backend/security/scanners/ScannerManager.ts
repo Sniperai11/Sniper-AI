@@ -1,3 +1,4 @@
+import { Logger } from "../../utils/logger";
 import { IScannerPlugin, NormalizedVuln } from "../../interfaces/IScannerPlugin";
 import { ScannerFactory } from "./ScannerFactory";
 import { scannerConfig } from "../scanner.config";
@@ -27,7 +28,7 @@ export class ScannerManager {
   private log(msg: string) {
     const timestamp = new Date().toISOString();
     this.logs.push(`[${timestamp}] [ScannerManager] ${msg}`);
-    console.log(`[ScannerManager] ${msg}`);
+    Logger.info(`[ScannerManager] ${msg}`);
   }
 
   /**

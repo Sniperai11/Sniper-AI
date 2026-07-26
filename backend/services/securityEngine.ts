@@ -1,3 +1,4 @@
+import { Logger } from "../utils/logger";
 import { IScanner } from "../interfaces/IScanner";
 import { projectRepository } from "../repositories/ProjectRepository";
 import { scanRepository } from "../repositories/ScanRepository";
@@ -124,7 +125,7 @@ export class SecurityEngineService implements IScanner {
       currentScan.scannerLogs.push(`[+] الفحص والتحليل الأمني الحقيقي للمؤسسات اكتمل بنجاح 100%.`);
 
     } catch (err: any) {
-      console.error("Critical error in Scan Engine Execution:", err);
+      Logger.error("Critical error in Scan Engine Execution:", err);
       currentScan.status = "Failed";
       currentScan.scannerLogs.push(`[!] فشل الفحص الأمني الحرج: ${err.message || err}`);
     }

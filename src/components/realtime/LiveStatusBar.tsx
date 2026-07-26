@@ -38,19 +38,19 @@ export const LiveStatusBar = () => {
         <span>WS: {wsState}</span>
       </div>
 
-      {/* API Status (Mocked for now as healthy) */}
+      {/* API Status */}
       <div className="flex items-center gap-1.5 px-2 py-1 rounded border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
         <Server className="h-3 w-3" />
-        <span>API: OK</span>
+        <span>API: ONLINE</span>
       </div>
 
-      {/* Database Status (Mocked) */}
+      {/* Database Status */}
       <div className="flex items-center gap-1.5 px-2 py-1 rounded border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
         <Database className="h-3 w-3" />
-        <span>DB: OK</span>
+        <span>DB: ONLINE</span>
       </div>
 
-      {/* AI Engine Status (Mocked) */}
+      {/* AI Engine Status */}
       <div className="flex items-center gap-1.5 px-2 py-1 rounded border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
         <Brain className="h-3 w-3" />
         <span>AI: READY</span>

@@ -1,6 +1,10 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
+import helmet from "helmet";
+import cors from "cors";
+import compression from "compression";
+import rateLimit from "express-rate-limit";
 import { createServer as createViteServer } from "vite";
 import apiRouter from "./backend/routes/api";
 import { validateEnvironment } from "./backend/config/env";
@@ -21,7 +25,25 @@ try {
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+// Production Hardening Middleware
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
+app.use(cors());
+app.use(compression());
+app.use(express.json({ limit: '10mb' }));
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "تم تجاوز الحد المسموح به من الطلبات، يرجى المحاولة لاحقاً",
+  }
+});
 
 // Enable Request Tracing & Performance Profiling early
 app.use(traceMiddleware);
@@ -51,7 +73,7 @@ app.get("/api/ready", healthCheckHandler);
 app.get("/api/live", healthCheckHandler);
 
 // Mount the modular backend API routes
-app.use("/api", apiRouter);
+app.use("/api", apiLimiter, apiRouter);
 
 // Global API 404 Route handler
 app.use("/api/*", (req, res) => {
@@ -71,12 +93,16 @@ app.use((err: any, req: any, res: any, next: any) => {
   const timestamp = new Date().toISOString();
   const statusCode = err.statusCode || err.status || 500;
   const validStatus = typeof statusCode === "number" && statusCode >= 100 && statusCode < 600 ? statusCode : 500;
+  
+  // Production hardening: do not leak error stacks or internal strings to the client
+  const isProd = process.env.NODE_ENV === "production";
+  
   res.status(validStatus);
   res.json({
     success: false,
-    message: err.message || "حدث خطأ غير متوقع في الخادم",
+    message: (isProd && validStatus >= 500) ? "حدث خطأ غير متوقع في الخادم" : (err.message || "حدث خطأ غير متوقع في الخادم"),
     data: null,
-    errors: err.errors || [err.toString()],
+    errors: isProd ? [] : (err.errors || [err.toString()]),
     timestamp
   });
 });
@@ -92,7 +118,6 @@ if (process.env.NODE_ENV !== "production") {
     const server = app.listen(PORT, "0.0.0.0", () => {
       Logger.info(`Development Server running on http://0.0.0.0:${PORT}`);
     });
-
     setupGracefulShutdown(server);
   });
 } else {
@@ -106,7 +131,6 @@ if (process.env.NODE_ENV !== "production") {
   const server = app.listen(PORT, "0.0.0.0", () => {
     Logger.info(`Production Server running on http://0.0.0.0:${PORT}`);
   });
-
   setupGracefulShutdown(server);
 }
 
@@ -151,4 +175,3 @@ function setupGracefulShutdown(server: any) {
   process.on("SIGINT", () => handleGracefulShutdown("SIGINT"));
   process.on("SIGTERM", () => handleGracefulShutdown("SIGTERM"));
 }
-

@@ -1,3 +1,4 @@
+import { Logger } from "../utils/logger";
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { reportRepository, ReportRepository } from "../repositories/ReportRepository";
@@ -32,7 +33,7 @@ export class ReportController {
       const report = await reportingEngineService.generateProjectReport(projectId);
       return res.json(Formatter.success(report, "تم إصدار وتوليد التقرير الأمني التفصيلي بنجاح"));
     } catch (error: any) {
-      console.error("Error generating report:", error);
+      Logger.error("Error generating report:", error);
       return res.status(500).json(Formatter.error(error.message || "فشل توليد التقرير الأمني"));
     }
   };

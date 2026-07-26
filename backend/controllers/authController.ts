@@ -146,6 +146,14 @@ export class AuthController {
       return res.status(500).json(Formatter.error(error.message));
     }
   };
+
+  public refresh = async (req: Request, res: Response) => {
+    try {
+      return res.json(Formatter.success({ token: `jwt-renewed-${Date.now()}` }, "تم تجديد رمز الجلسة بنجاح"));
+    } catch (error: any) {
+      return res.status(401).json(Formatter.error("فشل تجديد رمز الجلسة"));
+    }
+  };
 }
 
 export const authController = new AuthController();

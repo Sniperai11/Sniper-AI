@@ -1,3 +1,4 @@
+import { Logger } from "../utils/logger";
 import { db } from "../../src/db/index";
 import * as schema from "../../src/db/schema";
 import { IScanJob } from "../types/scanner";
@@ -18,7 +19,7 @@ function makeScanJobProxy(job: IScanJob): IScanJob {
         })
         .where(eq(schema.activeScans.id, targetJob.id));
     } catch (err) {
-      console.error("Error persisting scan job update:", err);
+      Logger.error("Error persisting scan job update:", err);
     }
   };
 
@@ -73,7 +74,7 @@ function makeVulnerabilityProxy(v: IVulnerability): IVulnerability {
         db.update(schema.vulnerabilities)
           .set({ isFalsePositive: value })
           .where(eq(schema.vulnerabilities.id, target.id))
-          .catch(err => console.error("Error updating vulnerability false positive status:", err));
+          .catch(err => Logger.error("Error updating vulnerability false positive status:", err));
       }
       return success;
     }

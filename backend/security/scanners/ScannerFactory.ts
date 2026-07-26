@@ -1,3 +1,4 @@
+import { Logger } from "../../utils/logger";
 import { IScannerPlugin } from "../../interfaces/IScannerPlugin";
 import { NmapScanner } from "../plugins/NmapScanner";
 import { NucleiScanner } from "../plugins/NucleiScanner";
@@ -27,7 +28,7 @@ export class ScannerFactory {
 
   public static registerPlugin(plugin: IScannerPlugin): void {
     this.plugins.set(plugin.id.toLowerCase(), plugin);
-    console.log(`[ScannerFactory] Registered plugin: ${plugin.name} [ID: ${plugin.id}]`);
+    Logger.info(`[ScannerFactory] Registered plugin: ${plugin.name} [ID: ${plugin.id}]`);
   }
 
   public static getPlugin(id: string): IScannerPlugin | null {

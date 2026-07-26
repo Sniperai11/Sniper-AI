@@ -1,3 +1,4 @@
+import { Logger } from "../utils/logger";
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { selfHealingService } from "../services/selfHealingService";
@@ -28,7 +29,7 @@ export class RemediationController {
       const result = await selfHealingService.performSelfHealing(id, vulnerableCode);
       return res.json(Formatter.success(result, "تم إتمام عملية الترميم والشفاء الذاتي بنجاح تام"));
     } catch (error: any) {
-      console.error("Error performing remediation:", error);
+      Logger.error("Error performing remediation:", error);
       return res.status(500).json(Formatter.error(error.message || "فشل إجراء المعالجة التلقائية للثغرة"));
     }
   };

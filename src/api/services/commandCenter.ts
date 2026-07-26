@@ -11,11 +11,15 @@ export const getSystemStats = async (): Promise<ApiResponse<SystemStats>> => {
 
     let totalVulnerabilities = 0;
     let activeAssets = 0;
-    let riskScore = 78;
+    let riskScore = 0;
 
     if (vulnsRes.status === 'fulfilled') {
       const vulns = Array.isArray(vulnsRes.value) ? vulnsRes.value : (vulnsRes.value?.data || []);
       totalVulnerabilities = vulns.length;
+      if (totalVulnerabilities > 0) {
+        const totalCvss = vulns.reduce((acc: number, v: any) => acc + (Number(v.cvssScore) || 5), 0);
+        riskScore = Math.min(100, Math.round((totalCvss / totalVulnerabilities) * 10));
+      }
     }
 
     if (projectsRes.status === 'fulfilled') {
@@ -31,23 +35,23 @@ export const getSystemStats = async (): Promise<ApiResponse<SystemStats>> => {
       success: true,
       message: 'Stats retrieved',
       data: {
-        activeAssets: activeAssets || 285,
-        totalVulnerabilities: totalVulnerabilities || 12,
-        openIncidents: 4,
+        activeAssets: activeAssets || 12,
+        totalVulnerabilities: totalVulnerabilities || 8,
+        openIncidents: 2,
         activeAgents: 5,
-        riskScore: riskScore,
+        riskScore: riskScore || 85,
       },
     };
-  } catch {
+  } catch (error) {
     return {
       success: true,
-      message: 'Stats retrieved',
+      message: 'Fallback Stats',
       data: {
-        activeAssets: 285,
-        totalVulnerabilities: 12,
-        openIncidents: 4,
+        activeAssets: 12,
+        totalVulnerabilities: 8,
+        openIncidents: 2,
         activeAgents: 5,
-        riskScore: 84,
+        riskScore: 85,
       },
     };
   }
@@ -75,20 +79,20 @@ export const getRiskTrend = async (): Promise<ApiResponse<RiskTrendEntry[]>> => 
         { name: 'Mar', critical: Math.max(2, critical + 1), high: Math.max(4, high), medium: Math.max(8, medium + 2) },
         { name: 'Apr', critical: Math.max(1, critical - 1), high: Math.max(2, high - 1), medium: Math.max(4, medium - 1) },
         { name: 'May', critical: Math.max(1, critical - 2), high: Math.max(2, high - 2), medium: Math.max(3, medium - 3) },
-        { name: 'Jun', critical: critical || 5, high: high || 14, medium: medium || 30 },
+        { name: 'Jun', critical: critical || 3, high: high || 5, medium: medium || 7 },
       ],
     };
-  } catch {
+  } catch (error) {
     return {
       success: true,
-      message: 'Trend retrieved',
+      message: 'Fallback Trend',
       data: [
-        { name: 'Jan', critical: 4, high: 12, medium: 24 },
-        { name: 'Feb', critical: 3, high: 15, medium: 20 },
-        { name: 'Mar', critical: 6, high: 10, medium: 28 },
-        { name: 'Apr', critical: 2, high: 8, medium: 15 },
-        { name: 'May', critical: 1, high: 5, medium: 12 },
-        { name: 'Jun', critical: 5, high: 14, medium: 30 },
+        { name: 'Jan', critical: 2, high: 4, medium: 8 },
+        { name: 'Feb', critical: 3, high: 5, medium: 7 },
+        { name: 'Mar', critical: 1, high: 3, medium: 9 },
+        { name: 'Apr', critical: 4, high: 6, medium: 5 },
+        { name: 'May', critical: 2, high: 3, medium: 6 },
+        { name: 'Jun', critical: 3, high: 5, medium: 7 },
       ],
     };
   }
@@ -113,21 +117,21 @@ export const getAssetDistribution = async (): Promise<ApiResponse<AssetDistribut
       success: true,
       message: 'Distribution retrieved',
       data: [
-        { name: 'Web Apps', value: web || 120, color: '#3b82f6' },
-        { name: 'APIs', value: api || 35, color: '#10b981' },
-        { name: 'Mobile Apps', value: mobile || 45, color: '#06b6d4' },
-        { name: 'Source Code', value: source || 85, color: '#8b5cf6' },
+        { name: 'Web Apps', value: web || 4, color: '#3b82f6' },
+        { name: 'APIs', value: api || 3, color: '#10b981' },
+        { name: 'Mobile Apps', value: mobile || 2, color: '#06b6d4' },
+        { name: 'Source Code', value: source || 1, color: '#8b5cf6' },
       ],
     };
-  } catch {
+  } catch (error) {
     return {
       success: true,
-      message: 'Distribution retrieved',
+      message: 'Fallback Distribution',
       data: [
-        { name: 'External IPs', value: 45, color: '#06b6d4' },
-        { name: 'Web Apps', value: 120, color: '#3b82f6' },
-        { name: 'Cloud Instances', value: 85, color: '#8b5cf6' },
-        { name: 'APIs', value: 35, color: '#10b981' },
+        { name: 'Web Apps', value: 4, color: '#3b82f6' },
+        { name: 'APIs', value: 3, color: '#10b981' },
+        { name: 'Mobile Apps', value: 2, color: '#06b6d4' },
+        { name: 'Source Code', value: 1, color: '#8b5cf6' },
       ],
     };
   }
@@ -152,19 +156,18 @@ export const getRecentAlerts = async (): Promise<ApiResponse<AlertEntry[]>> => {
       success: true,
       message: 'Alerts retrieved',
       data: alerts.length > 0 ? alerts : [
-        { id: 'VULN-9201', severity: 'Critical', asset: 'api.production.corp', type: 'SQL Injection', time: '10 mins ago', status: 'Open', risk: 9.8 },
-        { id: 'VULN-9200', severity: 'High', asset: 'auth.internal.corp', type: 'Stale Token Exposure', time: '1 hour ago', status: 'Investigating', risk: 7.5 },
+        { id: 'VULN-001', severity: 'Critical', asset: 'api.production.corp', type: 'SQL Injection', time: '10m ago', status: 'Open', risk: 9.8 },
+        { id: 'VULN-002', severity: 'High', asset: 'auth.internal.corp', type: 'Broken Auth', time: '1h ago', status: 'Open', risk: 8.5 },
       ],
     };
-  } catch {
+  } catch (error) {
     return {
       success: true,
-      message: 'Alerts retrieved',
+      message: 'Fallback Alerts',
       data: [
-        { id: 'VULN-9201', severity: 'Critical', asset: 'api.production.corp', type: 'SQL Injection', time: '10 mins ago', status: 'Open', risk: 9.8 },
-        { id: 'VULN-9200', severity: 'High', asset: 'auth.internal.corp', type: 'Stale Token Exposure', time: '1 hour ago', status: 'Investigating', risk: 7.5 },
+        { id: 'VULN-001', severity: 'Critical', asset: 'api.production.corp', type: 'SQL Injection', time: '10m ago', status: 'Open', risk: 9.8 },
+        { id: 'VULN-002', severity: 'High', asset: 'auth.internal.corp', type: 'Broken Auth', time: '1h ago', status: 'Open', risk: 8.5 },
       ],
     };
   }
 };
-

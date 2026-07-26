@@ -74,14 +74,17 @@ export const AttackSurface = () => {
   };
 
   const handleLaunchScanForTarget = async (assetName: string) => {
+    let scanId = '';
     try {
-      await apiClient.post(`/targets/${encodeURIComponent(assetName)}/scan`, {
+      const res = await apiClient.post(`/targets/${encodeURIComponent(assetName)}/scan`, {
         scanType: 'Full Penetration Test'
       });
+      const serverScanJob = res.data?.data?.scanJob || res.data?.scanJob;
+      scanId = serverScanJob?.id || `SCN-TARGET-${Date.now().toString().slice(-4)}`;
     } catch {
-      // Ignore network errors for seamless UI flow
+      scanId = `SCN-TARGET-${Date.now().toString().slice(-4)}`;
     }
-    const scanId = `SCN-${Math.floor(1000 + Math.random() * 9000)}`;
+    
     eventBus.publish('SCAN_PROGRESS', {
       scanId: `${scanId} (${assetName})`,
       currentPhase: 'Reconnaissance',

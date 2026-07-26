@@ -1,3 +1,4 @@
+import { Logger } from "../../utils/logger";
 import { IScannerPlugin, NormalizedVuln } from "../../interfaces/IScannerPlugin";
 import { scannerConfig, ScannerConfig } from "../scanner.config";
 
@@ -8,7 +9,7 @@ export abstract class BaseScanner implements IScannerPlugin {
 
   public async initialize(): Promise<void> {
     // Shared initialization logic (can be overridden)
-    console.log(`[BaseScanner] Initialized plugin: ${this.name} (${this.id})`);
+    Logger.info(`[BaseScanner] Initialized plugin: ${this.name} (${this.id})`);
   }
 
   public validateTarget(url: string, type: string): boolean {
@@ -38,7 +39,7 @@ export abstract class BaseScanner implements IScannerPlugin {
 
   public async cleanup(): Promise<void> {
     // Shared cleanup logic (can be overridden)
-    console.log(`[BaseScanner] Cleaned up plugin: ${this.name} (${this.id})`);
+    Logger.info(`[BaseScanner] Cleaned up plugin: ${this.name} (${this.id})`);
   }
 
   protected log(logsCallback: (msg: string) => void, message: string) {

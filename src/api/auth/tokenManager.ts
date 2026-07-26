@@ -1,4 +1,4 @@
-const TOKEN_KEY = 'ais_access_token';
+const TOKEN_KEY = 'sniper_token';
 const REFRESH_TOKEN_KEY = 'ais_refresh_token';
 
 export const getToken = (): string | null => {

@@ -1,3 +1,4 @@
+import { Logger } from "../utils/logger";
 import { GoogleGenAI, Type } from "@google/genai";
 import { IAIEngine } from "../interfaces/IAIEngine";
 import { IChatMessage, IAIVulnerabilityTemplate } from "../types/ai";
@@ -282,7 +283,7 @@ ${JSON.stringify(normalizedVulns, null, 2)}`;
         return JSON.parse(response.text.trim());
       }
     } catch (err) {
-      console.warn("Gemini API enrichment failed, returning raw normalized findings:", err);
+      Logger.warning("Gemini API enrichment failed, returning raw normalized findings:", err);
     }
     // Safe fallback if API fails
     return normalizedVulns.map(v => ({

@@ -1,3 +1,4 @@
+import { Logger } from "../utils/logger";
 import { ai } from "./aiEngine";
 import { scanRepository } from "../repositories/ScanRepository";
 import { projectRepository } from "../repositories/ProjectRepository";
@@ -13,7 +14,7 @@ export class SelfHealingService {
     vulnerabilityId: string,
     vulnerableCodeOverride?: string
   ): Promise<IAutoRemediationResult> {
-    console.log(`[SELF-HEALING START] Initiating code remediation for vulnerability: ${vulnerabilityId}`);
+    Logger.info(`[SELF-HEALING START] Initiating code remediation for vulnerability: ${vulnerabilityId}`);
 
     // 1. Fetch vulnerability from database
     const vuln = await scanRepository.getVulnerabilityById(vulnerabilityId);
@@ -75,7 +76,7 @@ export class SelfHealingService {
       // Strip markdown code blocks
       patchedCode = rawText.replace(/```typescript|```js|```javascript|```/g, "").trim();
     } catch (err) {
-      console.warn("Gemini API remediation call failed, using heuristic security repair:", err);
+      Logger.warning("Gemini API remediation call failed, using heuristic security repair:", err);
       patchedCode = this.generateDefaultPatchedCode(vuln.type, vulnerableCode);
     }
 
@@ -209,7 +210,7 @@ export function processTransaction(data: any) {
   const transactionId = data.id;
   const amount = data.amount;
   
-  console.log("Processing payment for: " + amount);
+  Logger.info("Processing payment for: " + amount);
   return { success: true, txnId: transactionId };
 }`;
   }
@@ -284,7 +285,7 @@ export function processTransaction(data: any) {
   const transactionId = data.id.replace(/[^a-zA-Z0-9-]/g, "");
   const amount = Math.abs(data.amount);
   
-  console.log("Processing secure payment for: " + amount);
+  Logger.info("Processing secure payment for: " + amount);
   return { success: true, txnId: transactionId };
 }`;
   }

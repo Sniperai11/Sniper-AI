@@ -9,6 +9,7 @@ import * as reportController from "../controllers/reportController";
 import * as bountyController from "../controllers/bountyController";
 import * as chatController from "../controllers/chatController";
 import * as remediationController from "../controllers/remediationController";
+import { commandCenterController } from "../controllers/commandCenterController";
 
 const router = Router();
 
@@ -24,6 +25,15 @@ router.post("/auth/logout", authController.logout);
 router.get("/auth/me", authController.getMe);
 router.post("/auth/forgot-password", authController.forgotPassword);
 router.post("/auth/reset-password", authController.resetPassword);
+router.post("/auth/refresh", authController.refresh);
+
+/* -------------------------------------------------------------------------- */
+/*                            COMMAND CENTER MAP                              */
+/* -------------------------------------------------------------------------- */
+router.get("/command-center/stats", commandCenterController.getStats);
+router.get("/command-center/trend", commandCenterController.getTrend);
+router.get("/command-center/distribution", commandCenterController.getDistribution);
+router.get("/command-center/alerts", commandCenterController.getAlerts);
 
 /* -------------------------------------------------------------------------- */
 /*                                USER & TEAM ROUTE MAP                        */
@@ -54,8 +64,12 @@ router.post("/targets/:id/verify-bounty", projectController.verifyBountyTarget);
 /*                             SECURITY SCAN ENGINE MAP                       */
 /* -------------------------------------------------------------------------- */
 router.get("/scans", scanController.getActiveScans);
+router.get("/scans/:id", scanController.getScanById);
+router.post("/scans/:id/stop", scanController.stopScan);
 router.post("/targets/:id/scan", scanController.startTargetScan);
 router.get("/vulnerabilities", scanController.getVulnerabilities);
+router.get("/vulnerabilities/:id", scanController.getVulnerabilityById);
+router.patch("/vulnerabilities/:id/owner", scanController.updateVulnerabilityOwner);
 router.post("/vulnerabilities/:id/ai-analyze", scanController.aiAnalyzeVulnerability);
 router.post("/vulnerabilities/:id/toggle-false-positive", scanController.toggleVulnerabilityFalsePositive);
 
