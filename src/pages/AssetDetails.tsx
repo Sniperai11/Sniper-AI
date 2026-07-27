@@ -32,13 +32,13 @@ export const AssetDetails = () => {
   const assetEnv = asset?.environment || 'Production';
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 text-right" dir="rtl">
       
       {/* Back & Breadcrumbs */}
       <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-400">
         <Link to="/assets" className="hover:text-cyan-400 flex items-center transition-colors">
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back to Inventory
+          <ArrowRight className="h-4 w-4 ml-1" />
+          الرجوع لسجل الأصول
         </Link>
         <span>/</span>
         <span className="text-slate-200">{assetName}</span>
@@ -54,11 +54,11 @@ export const AssetDetails = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 w-full">
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight break-all">{assetName}</h1>
-                <Badge variant="outline" className="border-cyan-500/30 text-cyan-400 bg-cyan-500/10">Active</Badge>
+                <Badge variant="outline" className="border-cyan-500/30 text-cyan-400 bg-cyan-500/10">نشط وحيوي</Badge>
               </div>
-              <Button size="sm" variant="outline" className="w-full sm:w-auto h-8 text-xs shrink-0 mt-2 sm:mt-0">
-                <ExternalLink className="h-3 w-3 mr-2" />
-                View Asset
+              <Button size="sm" variant="outline" className="w-full sm:w-auto h-8 text-xs shrink-0 mt-2 sm:mt-0 border-slate-700">
+                <ExternalLink className="h-3 w-3 ml-2" />
+                عرض الأصل
               </Button>
             </div>
             
@@ -73,7 +73,7 @@ export const AssetDetails = () => {
               </span>
               <span className="flex items-center gap-1.5">
                 <Clock className="h-4 w-4 text-slate-500" />
-                Last Scanned: 2 hours ago
+                آخر فحص: منذ ساعتين
               </span>
             </div>
           </div>
@@ -86,44 +86,44 @@ export const AssetDetails = () => {
         <div className="space-y-4 sm:space-y-6">
           <Card className="bg-slate-900/40 border-slate-800/60">
             <CardHeader className="pb-3 border-b border-slate-800/60 p-4 sm:p-6">
-              <CardTitle className="text-sm sm:text-base">Asset Context</CardTitle>
+              <CardTitle className="text-sm sm:text-base">سياق وبيانات الأصل</CardTitle>
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-4">
               <div className="space-y-4">
                 <div>
-                  <p className="text-xs text-slate-500 mb-1">Environment</p>
+                  <p className="text-xs text-slate-500 mb-1">البيئة</p>
                   <p className="text-sm font-medium text-slate-200">{assetEnv}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 mb-1">Owner</p>
+                  <p className="text-xs text-slate-500 mb-1">الفريق المالك / المسؤول</p>
                   <p className="text-sm font-medium text-slate-200">{assetOwner}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs text-slate-500 mb-1">Risk Score</p>
+                    <p className="text-xs text-slate-500 mb-1">درجة المخاطرة</p>
                     <div className="flex items-end gap-1">
                       <span className="text-xl font-black text-red-400">85</span>
                       <span className="text-xs text-slate-500 mb-1">/ 100</span>
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 mb-1">Vulnerabilities</p>
+                    <p className="text-xs text-slate-500 mb-1">الثغرات المكشوفة</p>
                     <div className="flex items-end gap-1">
                       <span className="text-xl font-black text-amber-400">3</span>
-                      <span className="text-xs text-slate-500 mb-1">Active</span>
+                      <span className="text-xs text-slate-500 mb-1">نشطة</span>
                     </div>
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 mb-2">Tags</p>
+                  <p className="text-xs text-slate-500 mb-2">الوسوم والتصنيفات</p>
                   <div className="flex flex-wrap gap-1.5">
                     {asset?.tags ? asset.tags.map(t => (
                       <Badge key={t} variant="secondary" className="bg-slate-800 text-slate-300 text-xs border border-slate-700">{t}</Badge>
                     )) : (
                       <>
                         <Badge variant="secondary" className="bg-slate-800 text-slate-300 text-xs border border-slate-700">PCI-DSS</Badge>
-                        <Badge variant="secondary" className="bg-slate-800 text-slate-300 text-xs border border-slate-700">Production</Badge>
-                        <Badge variant="secondary" className="bg-slate-800 text-slate-300 text-xs border border-slate-700">Ingress</Badge>
+                        <Badge variant="secondary" className="bg-slate-800 text-slate-300 text-xs border border-slate-700">الإنتاج</Badge>
+                        <Badge variant="secondary" className="bg-slate-800 text-slate-300 text-xs border border-slate-700">مدخل خارجي</Badge>
                       </>
                     )}
                   </div>
@@ -135,20 +135,20 @@ export const AssetDetails = () => {
           {/* Technology Stack */}
           <Card className="bg-slate-900/40 border-slate-800/60">
             <CardHeader className="pb-3 border-b border-slate-800/60 p-4 sm:p-6">
-              <CardTitle className="text-sm sm:text-base">Detected Tech Stack</CardTitle>
+              <CardTitle className="text-sm sm:text-base">التقنيات والمكتبات المكتشفة</CardTitle>
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-2.5 rounded bg-slate-800/30 border border-slate-800">
-                  <span className="text-xs font-medium text-slate-300">Nginx Proxy</span>
+                  <span className="text-xs font-medium text-slate-300">خادم النواة Nginx Proxy</span>
                   <Badge variant="outline" className="border-slate-700 text-slate-400 text-[10px]">v1.24.0</Badge>
                 </div>
                 <div className="flex items-center justify-between p-2.5 rounded bg-slate-800/30 border border-slate-800">
-                  <span className="text-xs font-medium text-slate-300">Node.js Express</span>
+                  <span className="text-xs font-medium text-slate-300">بيئة Node.js Express</span>
                   <Badge variant="outline" className="border-slate-700 text-slate-400 text-[10px]">v18.16.0</Badge>
                 </div>
                 <div className="flex items-center justify-between p-2.5 rounded bg-slate-800/30 border border-slate-800">
-                  <span className="text-xs font-medium text-slate-300">Ubuntu Linux</span>
+                  <span className="text-xs font-medium text-slate-300">نظام Ubuntu Linux</span>
                   <Badge variant="outline" className="border-slate-700 text-slate-400 text-[10px]">22.04 LTS</Badge>
                 </div>
               </div>
@@ -159,7 +159,7 @@ export const AssetDetails = () => {
         {/* Right Column - Activity & Linked Items */}
         <div className="xl:col-span-2 space-y-4 sm:space-y-6">
           <Card className="bg-slate-900/40 border-slate-800/60 p-4 sm:p-6">
-            <h3 className="text-sm sm:text-base font-semibold text-white mb-4">Ingress Traffic Activity (24h)</h3>
+            <h3 className="text-sm sm:text-base font-semibold text-white mb-4">نشاط الطلبات الواردة (24 ساعة)</h3>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={activityData}>
@@ -182,27 +182,27 @@ export const AssetDetails = () => {
           </Card>
 
           <Card className="bg-slate-900/40 border-slate-800/60 p-4 sm:p-6">
-            <h3 className="text-sm sm:text-base font-semibold text-white mb-4">Associated Security Findings</h3>
+            <h3 className="text-sm sm:text-base font-semibold text-white mb-4">المكتشفات الأمنية المرتبطة</h3>
             <div className="space-y-3">
               <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-800 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <ShieldAlert className="h-5 w-5 text-red-400 shrink-0" />
                   <div>
-                    <p className="text-xs font-semibold text-white">VULN-9021: Unauthenticated RCE in Edge Gateway</p>
-                    <p className="text-[11px] text-slate-400">CVSS 9.8 • Discovered 1 day ago</p>
+                    <p className="text-xs font-semibold text-white">VULN-9021: تنفيذ أوامر برمجية عن بُعد في Edge Gateway</p>
+                    <p className="text-[11px] text-slate-400">CVSS 9.8 • اكتشفت منذ يوم واحد</p>
                   </div>
                 </div>
-                <Badge variant="destructive">Critical</Badge>
+                <Badge variant="destructive">حرج</Badge>
               </div>
               <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-800 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />
                   <div>
-                    <p className="text-xs font-semibold text-white">INC-2024-080: Exfiltration Attempt via DNS Tunneling</p>
-                    <p className="text-[11px] text-slate-400">MITRE T1071.004 • In Investigation</p>
+                    <p className="text-xs font-semibold text-white">INC-2024-080: محاولة تسريب بيانات عبر خوادم DNS</p>
+                    <p className="text-[11px] text-slate-400">MITRE T1071.004 • قيد التحقيق</p>
                   </div>
                 </div>
-                <Badge variant="outline" className="border-amber-500/50 text-amber-400 bg-amber-500/10">Active</Badge>
+                <Badge variant="outline" className="border-amber-500/50 text-amber-400 bg-amber-500/10">نشط</Badge>
               </div>
             </div>
           </Card>

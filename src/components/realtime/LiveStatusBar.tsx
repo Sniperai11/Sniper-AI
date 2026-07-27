@@ -6,7 +6,7 @@ import { cn } from '../../lib/utils';
 
 export const LiveStatusBar = () => {
   const wsState = useConnectionState();
-  const metrics = pipelineMetrics.getMetrics(); // To get reactive metrics we might need an interval or a hook, but for now we'll do an interval
+  const metrics = pipelineMetrics.getMetrics();
 
   const [liveMetrics, setLiveMetrics] = React.useState(metrics);
 
@@ -24,53 +24,60 @@ export const LiveStatusBar = () => {
       case 'Reconnecting': return 'bg-yellow-500 text-yellow-400 border-yellow-500/20';
       case 'Disconnected':
       case 'Authentication Failed': return 'bg-red-500 text-red-400 border-red-500/20';
-      default: return 'bg-slate-500 text-slate-400 border-slate-500/20';
+      default: return 'bg-emerald-500 text-emerald-400 border-emerald-500/20';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'Connected': return 'متصل مباشر';
+      case 'Connecting': return 'جاري الاتصال...';
+      case 'Reconnecting': return 'جاري إعادات الاتصال...';
+      case 'Disconnected': return 'غير متصل';
+      default: return 'نشط';
     }
   };
 
   const wsColor = getStatusColor(wsState);
 
   return (
-    <div className="hidden lg:flex items-center gap-3 text-[10px] font-medium tracking-wider uppercase">
+    <div className="hidden lg:flex items-center gap-3 text-[10px] font-medium tracking-wider">
       {/* WS Status */}
       <div className={cn("flex items-center gap-1.5 px-2 py-1 rounded border bg-opacity-10", wsColor)}>
         <Wifi className="h-3 w-3" />
-        <span>WS: {wsState}</span>
+        <span>البث: {getStatusText(wsState)}</span>
       </div>
 
       {/* API Status */}
       <div className="flex items-center gap-1.5 px-2 py-1 rounded border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
         <Server className="h-3 w-3" />
-        <span>API: ONLINE</span>
+        <span>الخادم: نشط</span>
       </div>
 
       {/* Database Status */}
       <div className="flex items-center gap-1.5 px-2 py-1 rounded border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
         <Database className="h-3 w-3" />
-        <span>DB: ONLINE</span>
+        <span>قاعدة البيانات: متصلة</span>
       </div>
 
       {/* AI Engine Status */}
       <div className="flex items-center gap-1.5 px-2 py-1 rounded border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
         <Brain className="h-3 w-3" />
-        <span>AI: READY</span>
+        <span>الذكاء الاصطناعي: جاهز</span>
       </div>
 
       {/* Telemetry Metrics */}
-      <div className="flex items-center gap-4 text-slate-400 border-l border-slate-800 pl-3 ml-1">
+      <div className="flex items-center gap-4 text-slate-400 border-r border-slate-800 pr-3 mr-1">
         <div className="flex items-center gap-1.5" title="Events Per Second">
           <Activity className="h-3 w-3 text-cyan-500" />
-          <span>{Math.round(liveMetrics.eventsPerSecond)} EPS</span>
+          <span>{Math.round(liveMetrics.eventsPerSecond)} حدث/ث</span>
         </div>
         <div className="flex items-center gap-1.5" title="Latency">
           <Zap className="h-3 w-3 text-yellow-500" />
-          <span>{Math.round(liveMetrics.averageLatencyMs)}ms</span>
-        </div>
-        <div className="flex items-center gap-1.5" title="Reconnects">
-          <span className="text-slate-500">RECONNECTS:</span>
-          <span className="text-white">{liveMetrics.reconnectCount}</span>
+          <span>{Math.round(liveMetrics.averageLatencyMs)} مللي ثانية</span>
         </div>
       </div>
     </div>
   );
 };
+

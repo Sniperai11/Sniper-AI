@@ -18,12 +18,11 @@ import {
 } from '../api/services/commandCenter';
 
 const getSeverityBadge = (severity: string) => {
-  switch(severity.toLowerCase()) {
-    case 'critical': return <Badge variant="destructive" className="border-0">Critical</Badge>;
-    case 'high': return <Badge variant="warning" className="border-0 bg-amber-500/20 text-amber-400">High</Badge>;
-    case 'medium': return <Badge variant="secondary" className="border-0 text-slate-300 bg-slate-800">Medium</Badge>;
-    default: return <Badge variant="outline">{severity}</Badge>;
-  }
+  const sev = severity.toLowerCase();
+  if (sev.includes('crit') || sev.includes('حرج')) return <Badge variant="destructive" className="border-0">حرج (Critical)</Badge>;
+  if (sev.includes('high') || sev.includes('عال')) return <Badge variant="warning" className="border-0 bg-amber-500/20 text-amber-400">عالي (High)</Badge>;
+  if (sev.includes('med') || sev.includes('متوسط')) return <Badge variant="secondary" className="border-0 text-slate-300 bg-slate-800">متوسط (Medium)</Badge>;
+  return <Badge variant="outline">{severity}</Badge>;
 };
 
 export const CommandCenter = () => {
@@ -52,7 +51,7 @@ export const CommandCenter = () => {
       <div className="flex h-[50vh] items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="h-8 w-8 rounded-full border-2 border-emerald-500/20 border-t-emerald-500 animate-spin"></div>
-          <div className="text-sm text-slate-500 animate-pulse">Loading Dashboard...</div>
+          <div className="text-sm text-slate-500 animate-pulse">جاري تحميل لوحة التحكم...</div>
         </div>
       </div>
     );
@@ -64,12 +63,12 @@ export const CommandCenter = () => {
   const recentAlerts = alertsData?.data || [];
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 text-right" dir="rtl">
       
-      {/* Mobile Top Stats - Only visible on mobile for SOC priority */}
+      {/* Mobile Top Stats */}
       <div className="lg:hidden flex items-center justify-between bg-slate-900/60 border border-slate-800 rounded-xl p-4 mb-4">
         <div>
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Enterprise Security Score</p>
+          <p className="text-xs font-medium text-slate-400">مؤشر الأمان الأمني للمؤسسة</p>
           <div className="flex items-end gap-2 mt-1">
             <h2 className="text-3xl font-black text-emerald-400 leading-none">{stats?.riskScore || 0}</h2>
             <span className="text-sm font-medium text-emerald-500 mb-0.5">+2</span>
@@ -80,20 +79,20 @@ export const CommandCenter = () => {
         </div>
       </div>
 
-      {/* Header - Hidden on mobile, handled by mobile top stats */}
+      {/* Header */}
       <div className="hidden lg:flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Command Center</h1>
-          <p className="text-slate-400 text-sm mt-1">Enterprise security posture and active threat intelligence</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">مركز القيادة والعمليات الأمنية</h1>
+          <p className="text-slate-400 text-sm mt-1">الموقف الأمني الشامل للمؤسسة واستخبارات التهديدات النشطة</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" className="gap-2 text-xs sm:text-sm">
             <Activity className="h-4 w-4" />
-            <span className="hidden sm:inline">Export Report</span>
+            <span className="hidden sm:inline">تصدير التقرير</span>
           </Button>
           <Button className="gap-2 text-xs sm:text-sm">
             <ShieldAlert className="h-4 w-4" />
-            Triage Alerts
+            فرز التنبيهات
           </Button>
         </div>
       </div>
@@ -105,7 +104,7 @@ export const CommandCenter = () => {
           <CardContent className="p-4 sm:p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-1 sm:space-y-2">
-                <p className="text-xs sm:text-sm font-medium text-slate-400">Security Score</p>
+                <p className="text-xs sm:text-sm font-medium text-slate-400">معدل الأمان الشامل</p>
                 <div className="flex items-baseline gap-2">
                   <h2 className="text-2xl sm:text-3xl font-black text-emerald-400">{stats?.riskScore || 0}</h2>
                   <span className="text-xs sm:text-sm font-medium text-emerald-500">/ 100</span>
@@ -125,10 +124,10 @@ export const CommandCenter = () => {
           <CardContent className="p-4 sm:p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-1 sm:space-y-2">
-                <p className="text-xs sm:text-sm font-medium text-slate-400">Critical Threats</p>
+                <p className="text-xs sm:text-sm font-medium text-slate-400">التهديدات الحرجة النشطة</p>
                 <div className="flex items-baseline gap-2">
                   <h2 className="text-2xl sm:text-3xl font-black text-red-400">{stats?.totalVulnerabilities || 0}</h2>
-                  <span className="text-xs sm:text-sm font-medium text-red-500">+3 today</span>
+                  <span className="text-xs sm:text-sm font-medium text-red-500">+3 اليوم</span>
                 </div>
               </div>
               <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-red-500/10 flex items-center justify-center border border-red-500/20">
@@ -142,7 +141,7 @@ export const CommandCenter = () => {
           <CardContent className="p-4 sm:p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-1 sm:space-y-2">
-                <p className="text-xs sm:text-sm font-medium text-slate-400">Exposed Assets</p>
+                <p className="text-xs sm:text-sm font-medium text-slate-400">الأصول المعرضة للخطر</p>
                 <div className="flex items-baseline gap-2">
                   <h2 className="text-2xl sm:text-3xl font-black text-amber-400">{stats?.activeAssets || 0}</h2>
                 </div>
@@ -158,7 +157,7 @@ export const CommandCenter = () => {
           <CardContent className="p-4 sm:p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-1 sm:space-y-2">
-                <p className="text-xs sm:text-sm font-medium text-slate-400">AI Agents Active</p>
+                <p className="text-xs sm:text-sm font-medium text-slate-400">وكلاء الذكاء الاصطناعي النشطون</p>
                 <div className="flex items-baseline gap-2">
                   <h2 className="text-2xl sm:text-3xl font-black text-cyan-400">{stats?.activeAgents || 0}</h2>
                   <span className="text-xs sm:text-sm font-medium text-slate-500">/ 5</span>
@@ -174,7 +173,7 @@ export const CommandCenter = () => {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
                 </span>
-                Continuous Monitoring
+                مراقبة أمنية مستمرة
               </span>
             </div>
           </CardContent>
@@ -195,11 +194,10 @@ export const CommandCenter = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card className="lg:col-span-2 bg-slate-900/40 border-slate-800/60">
           <CardHeader className="flex flex-row items-center justify-between pb-2 p-4 sm:p-6">
-            <CardTitle className="text-sm sm:text-base font-medium">Vulnerability Trend (6 Months)</CardTitle>
-            <Button variant="ghost" size="sm" className="text-xs hidden sm:flex">View Details <ArrowUpRight className="ml-1 h-3 w-3" /></Button>
+            <CardTitle className="text-sm sm:text-base font-medium">اتجاه الثغرات الأمنية (6 أشهر)</CardTitle>
+            <Button variant="ghost" size="sm" className="text-xs hidden sm:flex">عرض التفاصيل <ArrowUpRight className="mr-1 h-3 w-3" /></Button>
           </CardHeader>
           <CardContent className="p-2 sm:p-6 pt-0 sm:pt-0">
-            {/* Mobile chart height smaller */}
             <div className="h-[200px] sm:h-[300px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={riskData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -225,19 +223,18 @@ export const CommandCenter = () => {
                     itemStyle={{ fontSize: '12px' }}
                     labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
                   />
-                  <Area type="monotone" dataKey="critical" stackId="1" stroke="#f87171" fill="url(#colorCritical)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="high" stackId="1" stroke="#fbbf24" fill="url(#colorHigh)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="medium" stackId="1" stroke="#94a3b8" fill="url(#colorMedium)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="critical" stackId="1" stroke="#f87171" fill="url(#colorCritical)" strokeWidth={2} name="حرجة" />
+                  <Area type="monotone" dataKey="high" stackId="1" stroke="#fbbf24" fill="url(#colorHigh)" strokeWidth={2} name="عالية" />
+                  <Area type="monotone" dataKey="medium" stackId="1" stroke="#94a3b8" fill="url(#colorMedium)" strokeWidth={2} name="متوسطة" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
 
-        {/* Hide Pie chart on very small screens to save space, or simplify */}
         <Card className="hidden sm:block bg-slate-900/40 border-slate-800/60">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-medium">Asset Distribution</CardTitle>
+            <CardTitle className="text-base font-medium">توزيع الأصول الرقمية</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[240px] w-full mt-4">
@@ -282,8 +279,8 @@ export const CommandCenter = () => {
       {/* Recent Alerts Section */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between lg:hidden px-1">
-          <h2 className="text-base font-bold text-white tracking-tight">Recent Critical Alerts</h2>
-          <Button variant="ghost" size="sm" className="text-xs text-cyan-400">View All</Button>
+          <h2 className="text-base font-bold text-white tracking-tight">أحدث التنبيهات الحرجة</h2>
+          <Button variant="ghost" size="sm" className="text-xs text-cyan-400">عرض الكل</Button>
         </div>
 
         {/* Mobile: Card Based List View */}
@@ -298,8 +295,8 @@ export const CommandCenter = () => {
                   </div>
                   <span className="font-bold text-slate-200 mt-1">{alert.type}</span>
                 </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-xs text-slate-500 uppercase">Risk</span>
+                <div className="flex flex-col items-start">
+                  <span className="text-xs text-slate-500 uppercase">المخاطرة</span>
                   <span className={`text-lg font-black ${alert.risk >= 9 ? 'text-red-400' : 'text-amber-400'}`}>
                     {alert.risk.toFixed(1)}
                   </span>
@@ -308,11 +305,11 @@ export const CommandCenter = () => {
               
               <div className="bg-slate-950/50 rounded-lg p-2.5 flex items-center justify-between border border-slate-800/50 mt-1">
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-500 uppercase">Asset</span>
+                  <span className="text-[10px] text-slate-500 uppercase">الأصل المستهدف</span>
                   <span className="text-sm font-medium text-slate-300">{alert.asset}</span>
                 </div>
                 <Button size="sm" variant="outline" className="h-7 text-xs bg-transparent border-slate-700">
-                  Details
+                  التفاصيل
                 </Button>
               </div>
             </div>
@@ -323,23 +320,23 @@ export const CommandCenter = () => {
         <Card className="hidden lg:block bg-slate-900/40 border-slate-800/60">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
-              <CardTitle className="text-base font-medium">Recent Critical Alerts</CardTitle>
-              <p className="text-sm text-slate-500 mt-1">Vulnerabilities detected in the last 72 hours</p>
+              <CardTitle className="text-base font-medium">أحدث التنبيهات والأحداث الحرجة</CardTitle>
+              <p className="text-sm text-slate-500 mt-1">الثغرات والتهديدات التي تم اكتشافها مؤخراً في النظام</p>
             </div>
-            <Button variant="outline" size="sm">View All</Button>
+            <Button variant="outline" size="sm">عرض الكل</Button>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs text-slate-500 uppercase bg-slate-900/50 border-b border-slate-800">
+              <table className="w-full text-sm text-right">
+                <thead className="text-xs text-slate-500 bg-slate-900/50 border-b border-slate-800">
                   <tr>
-                    <th className="px-4 py-3 font-medium">ID</th>
-                    <th className="px-4 py-3 font-medium">Severity</th>
-                    <th className="px-4 py-3 font-medium">Asset</th>
-                    <th className="px-4 py-3 font-medium">Vulnerability Type</th>
-                    <th className="px-4 py-3 font-medium">Detected</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                    <th className="px-4 py-3 text-right font-medium">Actions</th>
+                    <th className="px-4 py-3 font-medium">المعرف</th>
+                    <th className="px-4 py-3 font-medium">الخطورة</th>
+                    <th className="px-4 py-3 font-medium">الأصل الرقمي</th>
+                    <th className="px-4 py-3 font-medium">نوع الثغرة</th>
+                    <th className="px-4 py-3 font-medium">وقت الاكتشاف</th>
+                    <th className="px-4 py-3 font-medium">الحالة</th>
+                    <th className="px-4 py-3 text-left font-medium">الإجراءات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
@@ -351,13 +348,13 @@ export const CommandCenter = () => {
                       <td className="px-4 py-4 text-slate-300">{alert.type}</td>
                       <td className="px-4 py-4 text-slate-400">{alert.time}</td>
                       <td className="px-4 py-4">
-                        <span className={`text-xs font-medium ${alert.status === 'Open' ? 'text-red-400' : alert.status === 'Investigating' ? 'text-amber-400' : 'text-emerald-400'}`}>
-                          {alert.status}
+                        <span className={`text-xs font-medium ${(alert.status as string) === 'Open' || (alert.status as string) === 'مفتوح' ? 'text-red-400' : 'text-emerald-400'}`}>
+                          {alert.status === 'Open' ? 'مفتوحة' : alert.status === 'Investigating' ? 'قيد التحقيق' : alert.status === 'Remediated' ? 'معالجة' : alert.status}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-right">
+                      <td className="px-4 py-4 text-left">
                         <Button variant="ghost" size="sm" className="h-8 px-2 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/30">
-                          Investigate
+                          فحص والتحقيق
                         </Button>
                       </td>
                     </tr>

@@ -23,6 +23,7 @@ try {
 }
 
 const app = express();
+app.set("trust proxy", 1); // Trust first proxy for express-rate-limit
 const PORT = 3000;
 
 // Production Hardening Middleware
@@ -39,6 +40,7 @@ const apiLimiter = rateLimit({
   max: 500,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false,
   message: {
     success: false,
     message: "تم تجاوز الحد المسموح به من الطلبات، يرجى المحاولة لاحقاً",
@@ -90,6 +92,7 @@ app.use("/api/*", (req, res) => {
 // Global API Exception middleware
 app.use((err: any, req: any, res: any, next: any) => {
   Logger.error("Global express exception captured", err);
+  
   const timestamp = new Date().toISOString();
   const statusCode = err.statusCode || err.status || 500;
   const validStatus = typeof statusCode === "number" && statusCode >= 100 && statusCode < 600 ? statusCode : 500;

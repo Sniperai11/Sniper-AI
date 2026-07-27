@@ -23,7 +23,7 @@ export class UserRepository {
         name: found[0].name,
         email: found[0].email,
         role: found[0].role as any,
-        joinedAt: found[0].joinedAt ? found[0].joinedAt.toISOString() : undefined,
+        joinedAt: found[0].joinedAt ? (typeof found[0].joinedAt === 'string' ? found[0].joinedAt : found[0].joinedAt.toISOString()) : undefined,
       };
     }
     // Default admin user fallback
@@ -42,7 +42,7 @@ export class UserRepository {
       return {
         name: comp[0].name,
         ownerEmail: comp[0].ownerEmail,
-        joinedAt: comp[0].joinedAt ? comp[0].joinedAt.toISOString() : null,
+        joinedAt: comp[0].joinedAt ? (typeof comp[0].joinedAt === 'string' ? comp[0].joinedAt : comp[0].joinedAt.toISOString()) : null,
       };
     }
     return {
@@ -50,6 +50,23 @@ export class UserRepository {
       ownerEmail: "owner@digitaltech.sa",
       joinedAt: "2026-01-10T12:00:00Z"
     };
+  }
+
+  public async updateCompany(name: string, ownerEmail: string): Promise<any> {
+    const comp = await db.select().from(schema.companies).limit(1);
+    if (comp.length > 0) {
+      await db.update(schema.companies)
+        .set({ name, ownerEmail })
+        .where(eq(schema.companies.id, comp[0].id));
+    } else {
+      await db.insert(schema.companies).values({
+        id: "comp-1",
+        name,
+        ownerEmail,
+        joinedAt: new Date()
+      });
+    }
+    return this.getCompany();
   }
 
   public async getSubscription(): Promise<any> {

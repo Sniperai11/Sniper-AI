@@ -2,6 +2,14 @@
 export type UserRole = 'admin' | 'pentester' | 'developer' | 'auditor' | 'viewer';
 export type UserMode = 'pentester' | 'company';
 
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  joinedAt?: string;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -20,7 +28,11 @@ export interface UserProfile {
     role?: any;
     joinedAt?: string;
   };
-  company?: any;
+  company?: {
+    name?: string;
+    ownerEmail?: string;
+    joinedAt?: string;
+  };
   subscription?: any;
-  teamMembers?: any[];
+  teamMembers?: TeamMember[];
 }

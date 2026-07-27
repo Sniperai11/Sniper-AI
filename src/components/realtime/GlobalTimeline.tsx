@@ -64,37 +64,37 @@ export const GlobalTimeline = () => {
   const displayedEvents = filter ? timelineEvents.filter(e => e.type === filter) : timelineEvents;
 
   return (
-    <Card className="bg-slate-900/40 border-slate-800/60 h-full flex flex-col">
+    <Card className="bg-slate-900/40 border-slate-800/60 h-full flex flex-col text-right" dir="rtl">
       <CardHeader className="border-b border-slate-800/50 pb-4 shrink-0">
-        <CardTitle className="text-base font-medium">Global Activity Timeline</CardTitle>
+        <CardTitle className="text-base font-medium">الجدول الزمني للأنشطة الشاملة</CardTitle>
         <div className="flex flex-wrap items-center gap-2 mt-3">
           <Badge 
             variant="outline" 
             className={cn("cursor-pointer border-slate-700", !filter ? "bg-slate-800" : "hover:bg-slate-800/50")}
             onClick={() => setFilter(null)}
           >
-            All
+            الكل
           </Badge>
           <Badge 
             variant="outline" 
             className={cn("cursor-pointer border-slate-700", filter === 'Security' ? "bg-amber-500/20 text-amber-400 border-amber-500/30" : "hover:bg-slate-800/50")}
             onClick={() => setFilter('Security')}
           >
-            Security Events
+            أحداث أمنية
           </Badge>
           <Badge 
             variant="outline" 
             className={cn("cursor-pointer border-slate-700", filter === 'Agent' ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" : "hover:bg-slate-800/50")}
             onClick={() => setFilter('Agent')}
           >
-            Agents
+            وكلاء AI
           </Badge>
           <Badge 
             variant="outline" 
             className={cn("cursor-pointer border-slate-700", filter === 'Scan' ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" : "hover:bg-slate-800/50")}
             onClick={() => setFilter('Scan')}
           >
-            Scans
+            فحوصات
           </Badge>
         </div>
       </CardHeader>

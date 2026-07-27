@@ -85,11 +85,13 @@ export interface TaskWorkflow {
 
 export interface AuditLog {
   id: string;
-  userId: string;
+  userId?: string;
+  userEmail?: string;
   timestamp: string;
   action: string;
-  entityType: string;
-  entityId: string;
+  entityType?: string;
+  entityId?: string;
+  details?: string;
   previousValue?: any;
   newValue?: any;
   reason?: string;

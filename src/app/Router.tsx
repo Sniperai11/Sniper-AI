@@ -1,25 +1,25 @@
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 import { createBrowserRouter, Navigate, useNavigate } from 'react-router-dom';
 import { EnterpriseLayout } from '../components/layouts/EnterpriseLayout';
 import { AuthWrapper } from '../components/layouts/AuthWrapper';
 import { ErrorBoundary } from '../components/layouts/ErrorBoundary';
 import { NotFound } from '../pages/NotFound';
 
-// Lazy loaded pages
-const CommandCenter = lazy(() => import('../pages/CommandCenter').then(m => ({ default: m.CommandCenter })));
-const AttackSurface = lazy(() => import('../pages/AttackSurface').then(m => ({ default: m.AttackSurface })));
-const AssetIntelligence = lazy(() => import('../pages/AssetIntelligence').then(m => ({ default: m.AssetIntelligence })));
-const AssetDetails = lazy(() => import('../pages/AssetDetails').then(m => ({ default: m.AssetDetails })));
-const AIPentest = lazy(() => import('../pages/AIPentest').then(m => ({ default: m.AIPentest })));
-const Vulnerabilities = lazy(() => import('../pages/Vulnerabilities').then(m => ({ default: m.Vulnerabilities })));
-const AIAgents = lazy(() => import('../pages/AIAgents').then(m => ({ default: m.AIAgents })));
-const ThreatIntelligence = lazy(() => import('../pages/ThreatIntelligence').then(m => ({ default: m.ThreatIntelligence })));
-const Reports = lazy(() => import('../pages/Reports').then(m => ({ default: m.Reports })));
-const Compliance = lazy(() => import('../pages/Compliance').then(m => ({ default: m.Compliance })));
-const Incidents = lazy(() => import('../pages/Incidents').then(m => ({ default: m.Incidents })));
-const Cases = lazy(() => import('../pages/Cases').then(m => ({ default: m.Cases })));
-const Tasks = lazy(() => import('../pages/Tasks').then(m => ({ default: m.Tasks })));
-const RiskAnalytics = lazy(() => import('../pages/RiskAnalytics').then(m => ({ default: m.RiskAnalytics })));
+// Page components
+import { CommandCenter } from '../pages/CommandCenter';
+import { AssetIntelligence } from '../pages/AssetIntelligence';
+import { AssetDetails } from '../pages/AssetDetails';
+import { AIPentest } from '../pages/AIPentest';
+import { Vulnerabilities } from '../pages/Vulnerabilities';
+import { Reports } from '../pages/Reports';
+import { Cases } from '../pages/Cases';
+import { Tasks } from '../pages/Tasks';
+import { TeamManagement } from '../pages/TeamManagement';
+import { AuditLogs } from '../pages/AuditLogs';
+import { Settings } from '../pages/Settings';
+import { LoginPage } from '../legacy/features/auth/pages/LoginPage';
+import { RegisterPage } from '../legacy/features/auth/pages/RegisterPage';
+import { ForgotPasswordPage } from '../legacy/features/auth/pages/ForgotPasswordPage';
 
 const LoginWrapper = () => {
   const navigate = useNavigate();
@@ -30,24 +30,30 @@ const LoginWrapper = () => {
     else navigate('/');
   }} />;
 };
-// Legacy Login Page
-const LoginPage = lazy(() => import('../legacy/features/auth/pages/LoginPage').then(m => ({ default: m.LoginPage })));
+
+const RegisterWrapper = () => {
+  const navigate = useNavigate();
+  return <RegisterPage onNavigate={(path) => {
+    if (path === 'dashboard') navigate('/command-center');
+    else if (path === 'login') navigate('/login');
+    else navigate('/');
+  }} />;
+};
+
+const ForgotPasswordWrapper = () => {
+  const navigate = useNavigate();
+  return <ForgotPasswordPage onNavigate={(path) => {
+    if (path === 'login') navigate('/login');
+    else navigate('/');
+  }} />;
+};
 
 // Placeholder components for routes
-const Placeholder = ({ title }: { title: string }) => (
+const ComingSoon = ({ title }: { title: string }) => (
   <div className="flex h-[50vh] items-center justify-center text-slate-400 border border-slate-800 rounded-xl bg-slate-900/20 border-dashed">
     <div className="text-center space-y-2">
       <h2 className="text-xl font-bold text-white">{title}</h2>
-      <p className="text-sm">This module is being migrated to the new enterprise architecture.</p>
-    </div>
-  </div>
-);
-
-const FallbackLoader = () => (
-  <div className="flex h-[50vh] items-center justify-center">
-    <div className="flex flex-col items-center gap-4">
-      <div className="h-8 w-8 rounded-full border-2 border-cyan-500/20 border-t-cyan-500 animate-spin"></div>
-      <div className="text-sm text-slate-500 animate-pulse">Loading Module...</div>
+      <p className="text-sm">هذه الصفحة ستأتي قريباً... (Coming Soon)</p>
     </div>
   </div>
 );
@@ -57,9 +63,23 @@ export const router = createBrowserRouter([
     path: '/login',
     element: (
       <ErrorBoundary>
-        <Suspense fallback={<FallbackLoader />}>
-          <LoginWrapper />
-        </Suspense>
+        <LoginWrapper />
+      </ErrorBoundary>
+    )
+  },
+  {
+    path: '/register',
+    element: (
+      <ErrorBoundary>
+        <RegisterWrapper />
+      </ErrorBoundary>
+    )
+  },
+  {
+    path: '/forgot-password',
+    element: (
+      <ErrorBoundary>
+        <ForgotPasswordWrapper />
       </ErrorBoundary>
     )
   },
@@ -79,51 +99,33 @@ export const router = createBrowserRouter([
             path: 'command-center', 
             element: (
               <ErrorBoundary>
-                <Suspense fallback={<FallbackLoader />}>
-                  <CommandCenter />
-                </Suspense>
+                <CommandCenter />
               </ErrorBoundary>
             )
           },
           { 
-            path: 'attack-surface', 
+            path: 'projects', 
             element: (
               <ErrorBoundary>
-                <Suspense fallback={<FallbackLoader />}>
-                  <AttackSurface />
-                </Suspense>
+                <AssetIntelligence />
               </ErrorBoundary>
             )
           },
           { 
-            path: 'assets', 
+            path: 'projects/:id', 
             element: (
               <ErrorBoundary>
-                <Suspense fallback={<FallbackLoader />}>
-                  <AssetIntelligence />
-                </Suspense>
-              </ErrorBoundary>
-            )
-          },
-          { 
-            path: 'assets/:id', 
-            element: (
-              <ErrorBoundary>
-                <Suspense fallback={<FallbackLoader />}>
-                  <AssetDetails />
-                </Suspense>
+                <AssetDetails />
               </ErrorBoundary>
             )
           },
           
           // SECURITY OPERATIONS
           { 
-            path: 'ai-pentest', 
+            path: 'scans', 
             element: (
               <ErrorBoundary>
-                <Suspense fallback={<FallbackLoader />}>
-                  <AIPentest />
-                </Suspense>
+                <AIPentest />
               </ErrorBoundary>
             )
           },
@@ -131,102 +133,69 @@ export const router = createBrowserRouter([
             path: 'vulnerabilities', 
             element: (
               <ErrorBoundary>
-                <Suspense fallback={<FallbackLoader />}>
-                  <Vulnerabilities />
-                </Suspense>
+                <Vulnerabilities />
               </ErrorBoundary>
             )
           },
-          { path: 'vulnerabilities/:id', element: <Placeholder title="Vulnerability Details" /> },
+          { path: 'vulnerabilities/:id', element: <ComingSoon title="تفاصيل الثغرة" /> },
           { 
-            path: 'threat-intelligence', 
+            path: 'remediations', 
             element: (
               <ErrorBoundary>
-                <Suspense fallback={<FallbackLoader />}>
-                  <ThreatIntelligence />
-                </Suspense>
+                <Tasks />
               </ErrorBoundary>
             )
           },
           { 
-            path: 'incidents', 
+            path: 'bugbounty', 
             element: (
               <ErrorBoundary>
-                <Suspense fallback={<FallbackLoader />}>
-                  <Incidents />
-                </Suspense>
-              </ErrorBoundary>
-            )
-          },
-          { 
-            path: 'cases', 
-            element: (
-              <ErrorBoundary>
-                <Suspense fallback={<FallbackLoader />}>
-                  <Cases />
-                </Suspense>
-              </ErrorBoundary>
-            )
-          },
-          { 
-            path: 'tasks', 
-            element: (
-              <ErrorBoundary>
-                <Suspense fallback={<FallbackLoader />}>
-                  <Tasks />
-                </Suspense>
-              </ErrorBoundary>
-            )
-          },
-          { 
-            path: 'ai-security-agents', 
-            element: (
-              <ErrorBoundary>
-                <Suspense fallback={<FallbackLoader />}>
-                  <AIAgents />
-                </Suspense>
+                <Cases />
               </ErrorBoundary>
             )
           },
           
-          // RISK MANAGEMENT
-          { 
-            path: 'risk-analytics', 
-            element: (
-              <ErrorBoundary>
-                <Suspense fallback={<FallbackLoader />}>
-                  <RiskAnalytics />
-                </Suspense>
-              </ErrorBoundary>
-            )
-          },
-          { 
-            path: 'compliance', 
-            element: (
-              <ErrorBoundary>
-                <Suspense fallback={<FallbackLoader />}>
-                  <Compliance />
-                </Suspense>
-              </ErrorBoundary>
-            )
-          },
+          // COMING SOON
+          { path: 'threat-intelligence', element: <ComingSoon title="استخبارات التهديدات" /> },
+          { path: 'risk-analytics', element: <ComingSoon title="تحليلات المخاطر" /> },
+          { path: 'compliance', element: <ComingSoon title="الامتثال والمعايير" /> },
+          { path: 'integrations', element: <ComingSoon title="التكاملات والربط" /> },
+          
           { 
             path: 'reports', 
             element: (
               <ErrorBoundary>
-                <Suspense fallback={<FallbackLoader />}>
-                  <Reports />
-                </Suspense>
+                <Reports />
               </ErrorBoundary>
             )
           },
-          { path: 'reports/:id', element: <Placeholder title="Report Details" /> },
+          { path: 'reports/:id', element: <ComingSoon title="تفاصيل التقرير" /> },
           
           // ADMINISTRATION
-          { path: 'team', element: <Placeholder title="Team Management" /> },
-          { path: 'integrations', element: <Placeholder title="Integrations" /> },
-          { path: 'audit-logs', element: <Placeholder title="Audit Logs" /> },
-          { path: 'settings', element: <Placeholder title="Settings" /> },
+          { 
+            path: 'team', 
+            element: (
+              <ErrorBoundary>
+                <TeamManagement />
+              </ErrorBoundary>
+            )
+          },
+          { 
+            path: 'audit-logs', 
+            element: (
+              <ErrorBoundary>
+                <AuditLogs />
+              </ErrorBoundary>
+            )
+          },
+          { 
+            path: 'settings', 
+            element: (
+              <ErrorBoundary>
+                <Settings />
+              </ErrorBoundary>
+            )
+          },
           
           { path: '*', element: <NotFound /> }
         ]

@@ -64,6 +64,8 @@ router.post("/targets/:id/verify-bounty", projectController.verifyBountyTarget);
 /*                             SECURITY SCAN ENGINE MAP                       */
 /* -------------------------------------------------------------------------- */
 router.get("/scans", scanController.getActiveScans);
+router.get("/scans/profiles", scanController.getScanProfiles);
+router.post("/scans", scanController.startTargetScan);
 router.get("/scans/:id", scanController.getScanById);
 router.post("/scans/:id/stop", scanController.stopScan);
 router.post("/targets/:id/scan", scanController.startTargetScan);

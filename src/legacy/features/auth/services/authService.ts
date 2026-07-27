@@ -18,21 +18,23 @@ export interface RegisterPayload {
 
 export const authService = {
   login: async (payload: LoginPayload) => {
-    const response = await httpClient.post('/auth/login', payload);
-    if (response?.data) {
+    const response: any = await httpClient.post('/auth/login', payload);
+    const result = response?.data || response;
+    if (result) {
       localStorage.setItem('sniper_token', `jwt-token-${Date.now()}`);
       localStorage.setItem('sniper_user_email', payload.email);
     }
-    return response.data;
+    return result;
   },
 
   register: async (payload: RegisterPayload) => {
-    const response = await httpClient.post('/auth/register', payload);
-    if (response?.data) {
+    const response: any = await httpClient.post('/auth/register', payload);
+    const result = response?.data || response;
+    if (result) {
       localStorage.setItem('sniper_token', `jwt-token-${Date.now()}`);
       localStorage.setItem('sniper_user_email', payload.email);
     }
-    return response.data;
+    return result;
   },
 
   logout: async () => {

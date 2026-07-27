@@ -32,6 +32,8 @@ export type { ToastItem, ChatMessage };
 export interface SecurityState {
   // Authentication & Session
   userProfile: UserProfile | null;
+  companyProfile: { name: string; ownerEmail: string; joinedAt: string };
+  teamMembers: any[];
   userMode: UserMode;
   activeTab: string;
   
@@ -67,6 +69,7 @@ export interface SecurityState {
   // Actions
   setActiveTab: (tab: string) => void;
   setUserMode: (mode: UserMode) => void;
+  setTeamMembers: (members: any[]) => void;
   addToast: (message: string, type?: ToastItem['type']) => void;
   removeToast: (id: string) => void;
   fetchAllData: () => Promise<void>;
@@ -91,43 +94,122 @@ export interface SecurityState {
 }
 
 export const useSecurityStore = create<SecurityState>((set, get) => ({
-  // State getters delegated / mirrored from sub-stores for full backwards compatibility
-  get userProfile() { return useAuthStore.getState().userProfile; },
-  get userMode() { return useUIStore.getState().userMode; },
-  get activeTab() { return useUIStore.getState().activeTab; },
+  userProfile: {
+    id: 'usr_001',
+    name: 'المشرف الأمني الرئيسي',
+    email: 'ciso@company.sa',
+    companyName: 'شركة أرامكو السعودية للأمن الرقمي',
+    companyId: 'comp_saudi_001',
+    role: 'admin',
+    mode: 'company',
+    plan: 'ENTERPRISE',
+    permissions: ['ALL_ACCESS', 'SCAN_EXECUTE', 'SELF_HEALING', 'BOUNTY_REVIEW'],
+    user: {
+      id: 'tm-1',
+      name: 'المشرف الأمني الرئيسي',
+      email: 'ciso@company.sa',
+      role: 'admin',
+      joinedAt: new Date().toISOString()
+    },
+    company: {
+      name: 'شركة أرامكو السعودية للأمن الرقمي',
+      ownerEmail: 'ciso@company.sa',
+      joinedAt: new Date().toISOString()
+    },
+    subscription: {
+      plan: 'Enterprise',
+      cost: 599,
+      status: 'Active',
+      currentPeriodEnd: '2026-12-31',
+      limits: {
+        maxProjects: 100,
+        maxTargetsPerProject: 30,
+        scansPerMonth: 500,
+        scansRemainingThisMonth: 485,
+        aiConsultationsPerMonth: 1000,
+        aiConsultationsRemaining: 920
+      }
+    },
+    teamMembers: [
+      {
+        id: 'tm-1',
+        name: 'المشرف الأمني الرئيسي',
+        email: 'ciso@company.sa',
+        role: 'Admin',
+        joinedAt: new Date().toISOString()
+      }
+    ]
+  },
+  companyProfile: {
+    name: 'شركة أرامكو السعودية للأمن الرقمي',
+    ownerEmail: 'ciso@company.sa',
+    joinedAt: new Date().toISOString()
+  },
+  teamMembers: [
+    {
+      id: 'tm-1',
+      name: 'أحمد محمود',
+      email: 'ciso@company.sa',
+      role: 'Admin',
+      joinedAt: new Date().toISOString()
+    },
+    {
+      id: 'tm-2',
+      name: 'سارة خالد',
+      email: 'sara@company.sa',
+      role: 'Security Analyst',
+      joinedAt: new Date().toISOString()
+    }
+  ],
+  userMode: 'company',
+  activeTab: 'dashboard',
 
-  get projects() { return useProjectStore.getState().projects; },
-  get vulnerabilities() { return useFindingStore.getState().vulnerabilities; },
-  get activeScans() { return useScanStore.getState().activeScans; },
-  get auditLogs() { return useAuditStore.getState().auditLogs; },
-  get reportsHistory() { return useReportStore.getState().reportsHistory; },
-  get activeReport() { return useReportStore.getState().activeReport; },
+  projects: [],
+  vulnerabilities: [],
+  activeScans: [],
+  auditLogs: [],
+  reportsHistory: [],
+  activeReport: null,
 
-  get bbPrograms() { return useBugBountyStore.getState().bbPrograms; },
-  get bbLeaderboard() { return useBugBountyStore.getState().bbLeaderboard; },
-  get bbSubmissions() { return useBugBountyStore.getState().bbSubmissions; },
-  get bountyReportDraft() { return useBugBountyStore.getState().bountyReportDraft; },
-  get bountyReportLoading() { return useBugBountyStore.getState().bountyReportLoading; },
+  bbPrograms: [],
+  bbLeaderboard: [],
+  bbSubmissions: [],
+  bountyReportDraft: null,
+  bountyReportLoading: false,
 
-  get chatMessages() { return useChatStore.getState().chatMessages; },
-  get isChatSending() { return useChatStore.getState().isChatSending; },
+  chatMessages: [],
+  isChatSending: false,
 
-  get twoFactorEnabled() { return useAuthStore.getState().twoFactorEnabled; },
-  get twoFactorType() { return useAuthStore.getState().twoFactorType; },
-  get twoFactorPhone() { return useAuthStore.getState().twoFactorPhone; },
+  twoFactorEnabled: true,
+  twoFactorType: 'app',
+  twoFactorPhone: '+966501234567',
 
-  get isLoading() { return useUIStore.getState().isLoading; },
-  get actionLoading() { return useUIStore.getState().actionLoading; },
-  get toasts() { return useUIStore.getState().toasts; },
+  isLoading: false,
+  actionLoading: null,
+  toasts: [],
 
-  setActiveTab: (tab) => useUIStore.getState().setActiveTab(tab),
-  setUserMode: (mode) => useUIStore.getState().setUserMode(mode),
+  setActiveTab: (tab) => {
+    useUIStore.getState().setActiveTab(tab);
+    set({ activeTab: tab });
+  },
+  setUserMode: (mode) => {
+    useUIStore.getState().setUserMode(mode);
+    set({ userMode: mode });
+  },
+  setTeamMembers: (members) => set({ teamMembers: members }),
 
-  addToast: (message, type) => useUIStore.getState().addToast(message, type),
-  removeToast: (id) => useUIStore.getState().removeToast(id),
+  addToast: (message, type) => {
+    useUIStore.getState().addToast(message, type);
+    set({ toasts: useUIStore.getState().toasts });
+  },
+  removeToast: (id) => {
+    useUIStore.getState().removeToast(id);
+    set({ toasts: useUIStore.getState().toasts });
+  },
 
   fetchAllData: async () => {
     useUIStore.getState().setIsLoading(true);
+    set({ isLoading: true });
     try {
       const [profileRes, projRes, vulnRes, scanRes, logRes, reportHistRes, bountyRes] = await Promise.all([
         usersApi.getProfile().catch(() => null),
@@ -199,21 +281,37 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
         return [];
       };
 
+      const projects = extractArray(projRes);
+      const vulnerabilities = extractArray(vulnRes);
+      const activeScans = extractArray(scanRes);
+      const auditLogs = extractArray(logRes);
+      const reportsHistory = extractArray(reportHistRes);
+
       useAuthStore.getState().setUserProfile(validProfile);
-      useProjectStore.getState().setProjects(extractArray(projRes));
-      useFindingStore.getState().setVulnerabilities(extractArray(vulnRes));
-      useScanStore.getState().setActiveScans(extractArray(scanRes));
-      useAuditStore.getState().setAuditLogs(extractArray(logRes));
-      useReportStore.getState().setReportsHistory(extractArray(reportHistRes));
+      useProjectStore.getState().setProjects(projects);
+      useFindingStore.getState().setVulnerabilities(vulnerabilities);
+      useScanStore.getState().setActiveScans(activeScans);
+      useAuditStore.getState().setAuditLogs(auditLogs);
+      useReportStore.getState().setReportsHistory(reportsHistory);
       useBugBountyStore.getState().setBountyData(bbData);
 
-      // Trigger re-render for subscribers listening to root store
-      set({ ...useSecurityStore.getState() });
+      set({
+        userProfile: validProfile,
+        projects,
+        vulnerabilities,
+        activeScans,
+        auditLogs,
+        reportsHistory,
+        bbPrograms: bbData.programs || [],
+        bbLeaderboard: bbData.leaderboard || [],
+        bbSubmissions: bbData.submissions || [],
+        isLoading: false
+      });
     } catch (err: any) {
       console.error('Error fetching security data:', err);
     } finally {
       useUIStore.getState().setIsLoading(false);
-      set({ ...useSecurityStore.getState() });
+      set({ isLoading: false });
     }
   },
 

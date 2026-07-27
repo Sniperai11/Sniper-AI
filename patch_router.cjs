@@ -1,0 +1,10 @@
+const fs = require('fs');
+let code = fs.readFileSync('src/app/Router.tsx', 'utf8');
+code = code.replace("import { AttackSurface } from '../pages/AttackSurface';\n", "");
+code = code.replace("import { AIAgents } from '../pages/AIAgents';\n", "");
+code = code.replace("import { ThreatIntelligence } from '../pages/ThreatIntelligence';\n", "");
+code = code.replace("import { Compliance } from '../pages/Compliance';\n", "");
+code = code.replace("import { Incidents } from '../pages/Incidents';\n", "");
+code = code.replace("import { RiskAnalytics } from '../pages/RiskAnalytics';\n", "");
+code = code.replace("import { Integrations } from '../pages/Integrations';\n", "");
+fs.writeFileSync('src/app/Router.tsx', code);

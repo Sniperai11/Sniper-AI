@@ -34,7 +34,7 @@ export class ScanController {
    */
   public startTargetScan = async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = req.params.id || req.body.targetId;
       
       const foundTarget = await projectRepository.findTargetById(id);
       if (!foundTarget) {
@@ -264,11 +264,25 @@ const result = await db.query("SELECT * FROM payments WHERE recipient = $1", [se
       return res.status(500).json(Formatter.error(error.message));
     }
   };
-}
 
+  public getScanProfiles = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const profiles = [
+        { id: 'prof-owasp', name: 'OWASP Top 10', description: 'فحص شامل لثغرات OWASP العشر', type: 'Web' },
+        { id: 'prof-full', name: 'فحص شامل (Full Scan)', description: 'فحص عميق لجميع المنافذ والخدمات', type: 'Network' },
+        { id: 'prof-fast', name: 'فحص سريع (Fast Scan)', description: 'فحص سريع للمنافذ الشائعة والثغرات المعروفة', type: 'Network' },
+        { id: 'prof-api', name: 'فحص واجهات برمجة التطبيقات (API)', description: 'فحص مخصص لثغرات الـ APIs', type: 'API' }
+      ];
+      return res.json(Formatter.success(profiles, "تم جلب ملفات الفحص بنجاح"));
+    } catch (error: any) {
+      return res.status(500).json(Formatter.error(error.message));
+    }
+  };
+}
 export const scanController = new ScanController();
 
 // Export legacy functions for non-breaking backward compatibility
+export const getScanProfiles = scanController.getScanProfiles;
 export const getActiveScans = scanController.getActiveScans;
 export const startTargetScan = scanController.startTargetScan;
 export const getVulnerabilities = scanController.getVulnerabilities;

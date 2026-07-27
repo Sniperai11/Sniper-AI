@@ -52,44 +52,44 @@ export const LiveEventStream = () => {
   
   const getSeverityBadge = (severity: string) => {
     switch (severity.toLowerCase()) {
-      case 'critical': return <Badge variant="destructive" className="border-0">Critical</Badge>;
-      case 'high': return <Badge variant="warning" className="bg-amber-500/20 text-amber-400 border-0">High</Badge>;
-      case 'medium': return <Badge variant="secondary" className="bg-slate-800 text-slate-300 border-0">Medium</Badge>;
+      case 'critical': return <Badge variant="destructive" className="border-0">حرج</Badge>;
+      case 'high': return <Badge variant="warning" className="bg-amber-500/20 text-amber-400 border-0">عالي</Badge>;
+      case 'medium': return <Badge variant="secondary" className="bg-slate-800 text-slate-300 border-0">متوسط</Badge>;
       default: return <Badge variant="outline">{severity}</Badge>;
     }
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 h-[600px] sm:h-[700px] relative">
+    <div className="flex flex-col lg:flex-row gap-4 h-[600px] sm:h-[700px] relative text-right" dir="rtl">
       <Card className={cn("bg-slate-900/40 border-slate-800/60 flex-1 flex flex-col transition-all", selectedEvent ? "hidden lg:flex lg:w-2/3" : "w-full")}>
         <CardHeader className="flex flex-row items-center justify-between pb-2 p-4 sm:p-6 border-b border-slate-800/50 shrink-0">
           <div className="flex items-center gap-3">
             <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2">
-              Live Security Operations
+              بث الأحداث المباشرة
               {!isPaused && <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse" />}
             </CardTitle>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative hidden sm:block">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+              <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
               <input 
                 type="text" 
-                placeholder="Search description, asset..." 
+                placeholder="بحث في الوصف، الأصل..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8 w-48 lg:w-64 rounded-md border border-slate-800 bg-slate-900/50 pl-8 pr-3 text-xs text-slate-200 placeholder:text-slate-500 focus:border-cyan-500/50 focus:outline-none"
+                className="h-8 w-48 lg:w-64 rounded-md border border-slate-800 bg-slate-900/50 pr-8 pl-3 text-xs text-slate-200 placeholder:text-slate-500 focus:border-cyan-500/50 focus:outline-none text-right"
               />
             </div>
             <Button variant="outline" size="sm" className="h-8 px-2 hidden sm:flex border-slate-700">
-              <Filter className="h-3.5 w-3.5 mr-1.5" />
-              Filters
+              <Filter className="h-3.5 w-3.5 ml-1.5" />
+              تصفية
             </Button>
             <Button 
               variant="outline" 
               size="sm" 
               className="h-8 w-8 p-0 border-slate-700"
               onClick={() => setIsPaused(!isPaused)}
-              title={isPaused ? "Resume Stream" : "Pause Stream"}
+              title={isPaused ? "استئناف البث" : "إيقاف مؤقت للبث"}
             >
               {isPaused ? <Play className="h-3.5 w-3.5 text-emerald-400" /> : <Pause className="h-3.5 w-3.5 text-amber-400" />}
             </Button>

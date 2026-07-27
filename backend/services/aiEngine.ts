@@ -14,6 +14,22 @@ export const ai = new GoogleGenAI({
   }
 });
 
+
+async function generateContentWithRetry(params: any, retries = 3): Promise<any> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await generateContentWithRetry(params);
+    } catch (err: any) {
+      if (err?.status === 503 || err?.status === 429) {
+        if (i === retries - 1) throw err;
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i))); // Exponential backoff
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+
 export class AIEngineService implements IAIEngine {
   /**
    * 1. AI Security Scan - Generates vulnerabilities using structured Gemini 3.5 Flash JSON output
@@ -51,7 +67,7 @@ ${target.type === "Mobile" ? "الهدف الحالي هو تطبيق جوال (
     * iso27001: رمز ISO 27001 المقابل
     * pciDss: رمز PCI DSS المقابل`;
 
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: "gemini-3.5-flash",
       contents: [
         { text: promptInput },
@@ -115,7 +131,7 @@ ${target.type === "Mobile" ? "الهدف الحالي هو تطبيق جوال (
 3. خطة إصلاح برمجية عملية للمطورين مع كود برمجي آمن افتراضي (Secure Code snippet).
 4. اقتراح حماية شاملة على مستوى جدار الحماية (WAF) أو البنية التحتية.`;
 
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: "gemini-3.5-flash",
       contents: prompt,
       config: {
@@ -166,7 +182,7 @@ ${target.type === "Mobile" ? "الهدف الحالي هو تطبيق جوال (
 - منخفضة الخطورة (Low): ${severityBreakdown.Low}
 مستوى المخاطر التراكمي المقدر: ${calculatedRisk}% (كلما زاد دل على ضعف حماية الموقع).`;
 
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: "gemini-3.5-flash",
       contents: prompt,
       config: {
@@ -203,7 +219,7 @@ Generate a beautifully structured markdown report with the following precise sec
 
 Make sure the tone is professional, objective, and clear. Do not include conversational preambles like "Here is your report". Start directly with the markdown format.`;
 
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: "gemini-3.5-flash",
       contents: prompt,
       config: {
@@ -237,7 +253,7 @@ ${JSON.stringify(normalizedVulns, null, 2)}`;
 يجب إرجاع النتيجة كـ JSON Array يطابق نفس هيكل البيانات المدخل تماماً ومطابقتها لمعايير OWASP و ISO 27001 و PCI DSS.`;
 
     try {
-      const response = await ai.models.generateContent({
+      const response = await generateContentWithRetry({
         model: "gemini-3.5-flash",
         contents: [
           { text: promptInput },

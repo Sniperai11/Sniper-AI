@@ -49,13 +49,14 @@ apiClient.interceptors.response.use(
   (response) => {
     // If response.data is HTML string from SPA fallback (e.g. <!DOCTYPE html>), treat as endpoint not found
     if (typeof response.data === 'string' && response.data.trim().startsWith('<')) {
-      throw new AxiosError('API Endpoint not found (HTML fallback returned)', 'ERR_BAD_REQUEST', response.config, response.request, {
+      const err = new AxiosError('المسار المطلوب غير موجود على الخادم', 'ERR_BAD_REQUEST', response.config, response.request, {
         status: 404,
         statusText: 'Not Found',
         headers: response.headers,
         config: response.config,
-        data: { success: false, message: 'API Endpoint not found' }
+        data: { success: false, message: 'المسار المطلوب غير موجود على الخادم' }
       });
+      return Promise.reject(err);
     }
     // Unpack standard API response envelope if it exists
     if (response.data && typeof response.data === 'object' && response.data.success !== undefined) {
@@ -66,15 +67,16 @@ apiClient.interceptors.response.use(
   async (error: AxiosError<any>) => {
     const originalRequest = error.config;
 
-    // Network error or timeout
-    if (!error.response) {
-      Logger.warn('Network connection note:', error.message);
-      return Promise.reject(new NetworkError(error.message));
-    }
-
-    const { status, data } = error.response;
-    const message = data?.message || error.message;
+    const status = error.response?.status || 500;
+    const data = error.response?.data;
+    const message = data?.message || error.message || 'حدث خطأ غير متوقع في الخادم';
     const errors = data?.errors || [];
+
+    // Real Network error or timeout (no response and network error code)
+    if (!error.response && error.code === 'ERR_NETWORK') {
+      Logger.warn('Network connection note:', error.message);
+      return Promise.reject(new NetworkError('تعذر الاتصال بالخادم. يرجى التحقق من الاتصال بالشبكة.'));
+    }
 
     // 401 Unauthorized Handling (with refresh logic)
     if (status === 401 && originalRequest) {

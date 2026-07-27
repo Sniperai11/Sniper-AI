@@ -61,6 +61,9 @@ export class AuthController {
       };
 
       await userRepository.addTeamMember(newUser);
+      if (companyName) {
+        await userRepository.updateCompany(companyName, newUser.email);
+      }
       UserRepository.setActiveUserId(newUser.id);
 
       const profile = await userService.getProfile();
