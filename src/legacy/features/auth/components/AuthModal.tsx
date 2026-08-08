@@ -373,72 +373,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {authMode === 'quick' && (
           <div className="space-y-3">
             <p className="text-xs text-slate-400 mb-3">
-              اختر أحد الحسابات المجهزة مسبقاً لتجربة المنصة فوراً بضغطة زر واحدة بدون كلمة مرور:
+              اضغط للانتقال مباشرة للوحة التحكم باستخدام الحساب الرئيسي للمسؤول:
             </p>
 
             <button
               type="button"
               disabled={isSubmitting}
-              onClick={() => handleQuickLogin('elhammoh2795@gmail.com', 'company')}
+              onClick={() => handleQuickLogin('alridwanykick@gmail.com', 'company')}
               className="w-full p-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-900/80 transition-all text-right group flex items-center justify-between"
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-cyan-950 border border-cyan-800 text-cyan-400 flex items-center justify-center font-bold text-sm">
-                  إ
+                  م
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-white group-hover:text-cyan-400 transition-colors">
-                    إبراهيم العتيبي (CISO - مدير الأمان التنفيذي)
+                    المسؤول الرئيسي (System Admin)
                   </h4>
-                  <p className="text-[11px] text-slate-400">elhammoh2795@gmail.com • شركة أرامكو السعودية</p>
+                  <p className="text-[11px] text-slate-400">alridwanykick@gmail.com • كلمة المرور: R00t@2025</p>
                 </div>
               </div>
               <span className="px-2.5 py-1 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800/60 text-[10px] font-mono">
                 Admin
-              </span>
-            </button>
-
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleQuickLogin('hunter.tareq@security.sa', 'hunter')}
-              className="w-full p-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-900/80 transition-all text-right group flex items-center justify-between"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-950 border border-amber-800 text-amber-400 flex items-center justify-center font-bold text-sm">
-                  ط
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white group-hover:text-amber-400 transition-colors">
-                    طارق الشمري (صياد مكافآت معتمد)
-                  </h4>
-                  <p className="text-[11px] text-slate-400">hunter.tareq@security.sa • نطاق المكافآت المستقل</p>
-                </div>
-              </div>
-              <span className="px-2.5 py-1 rounded-lg bg-amber-950 text-amber-400 border border-amber-800/60 text-[10px] font-mono">
-                Hunter
-              </span>
-            </button>
-
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleQuickLogin('analyst.sara@cyber.sa', 'company')}
-              className="w-full p-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-900/80 transition-all text-right group flex items-center justify-between"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-950 border border-indigo-800 text-indigo-400 flex items-center justify-center font-bold text-sm">
-                  س
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white group-hover:text-indigo-400 transition-colors">
-                    سارة القحطاني (محلل أمني ومدقق شفرات)
-                  </h4>
-                  <p className="text-[11px] text-slate-400">analyst.sara@cyber.sa • فريق الاستجابة للحوادث</p>
-                </div>
-              </div>
-              <span className="px-2.5 py-1 rounded-lg bg-indigo-950 text-indigo-400 border border-indigo-800/60 text-[10px] font-mono">
-                Analyst
               </span>
             </button>
           </div>

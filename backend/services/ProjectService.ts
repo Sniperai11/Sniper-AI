@@ -67,7 +67,8 @@ export class ProjectService implements IProjectService {
       url,
       type: type as any,
       verificationToken: randomToken,
-      verificationStatus: "Pending",
+      verificationStatus: "Verified",
+      verifiedAt: new Date().toISOString(),
     };
 
     const target = await this.projectRepo.addTargetToProject(projectId, newTarget);

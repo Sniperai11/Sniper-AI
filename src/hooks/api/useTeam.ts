@@ -42,3 +42,16 @@ export const useDeleteTeamMember = () => {
     }
   });
 };
+
+export const useSwitchUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      await apiClient.post('/user/switch', { userId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['team'] });
+    }
+  });
+};

@@ -9,7 +9,7 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000,
+  timeout: 30000,
 });
 
 let isRefreshing = false;
@@ -79,50 +79,59 @@ apiClient.interceptors.response.use(
     }
 
     // 401 Unauthorized Handling (with refresh logic)
-    if (status === 401 && originalRequest) {
-      if (!isRefreshing) {
-        isRefreshing = true;
-        try {
-          const refreshToken = getRefreshToken();
-          if (refreshToken) {
-            // Attempt token refresh
-            const response = await axios.post(`${env.API_URL}/auth/refresh`, { refreshToken });
-            const newToken = response.data.data?.token;
-            
-            if (newToken) {
-              setToken(newToken);
-              processQueue(null, newToken);
-              isRefreshing = false;
-              
-              if (!originalRequest.headers) {
-                originalRequest.headers = new axios.AxiosHeaders();
-              }
-              originalRequest.headers.set('Authorization', `Bearer ${newToken}`);
-              return apiClient(originalRequest);
-            }
-          }
-          throw new Error('No refresh token available or missing token in response');
-        } catch (refreshError) {
-          clearToken();
-          processQueue(refreshError, null);
-          isRefreshing = false;
-          // Dispatch auth event for application routing
-          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
-          Logger.warn('Session expired due to refresh failure');
-          return Promise.reject(new UnauthorizedError('Session expired. Please log in again.'));
-        }
+    const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') || originalRequest?.url?.includes('/auth/register');
+    if (status === 401) {
+      if (isAuthEndpoint) {
+        return Promise.reject(new UnauthorizedError(message));
       }
 
-      // If already refreshing, queue this request
-      return new Promise((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      }).then((token) => {
-        if (!originalRequest.headers) {
-          originalRequest.headers = new axios.AxiosHeaders();
+      if (originalRequest) {
+        if (!isRefreshing) {
+          isRefreshing = true;
+          try {
+            const refreshToken = getRefreshToken();
+            if (refreshToken) {
+              // Attempt token refresh
+              const response = await axios.post(`${env.API_URL}/auth/refresh`, { refreshToken });
+              const newToken = response.data.data?.token;
+              
+              if (newToken) {
+                setToken(newToken);
+                processQueue(null, newToken);
+                isRefreshing = false;
+                
+                if (!originalRequest.headers) {
+                  originalRequest.headers = new axios.AxiosHeaders();
+                }
+                originalRequest.headers.set('Authorization', `Bearer ${newToken}`);
+                return apiClient(originalRequest);
+              }
+            }
+            throw new Error('No refresh token available or missing token in response');
+          } catch (refreshError) {
+            clearToken();
+            processQueue(refreshError, null);
+            isRefreshing = false;
+            // Dispatch auth event for application routing
+            window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+            Logger.warn('Session expired due to refresh failure');
+            return Promise.reject(new UnauthorizedError('Session expired. Please log in again.'));
+          }
         }
-        originalRequest.headers.set('Authorization', `Bearer ${token}`);
-        return apiClient(originalRequest);
-      }).catch((err) => Promise.reject(err));
+
+        // If already refreshing, queue this request
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then((token) => {
+          if (!originalRequest.headers) {
+            originalRequest.headers = new axios.AxiosHeaders();
+          }
+          originalRequest.headers.set('Authorization', `Bearer ${token}`);
+          return apiClient(originalRequest);
+        }).catch((err) => Promise.reject(err));
+      }
+
+      return Promise.reject(new UnauthorizedError(message));
     }
 
     // 403 Forbidden Handling

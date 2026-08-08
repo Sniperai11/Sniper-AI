@@ -52,7 +52,7 @@ export class ProjectController {
       Validators.requireFields(req.body, ["name", "url", "type"]);
 
       const sanitizedName = Validators.sanitizeString(name);
-      const sanitizedUrl = Validators.sanitizeString(url);
+      const sanitizedUrl = Validators.sanitizeUrl(url);
 
       const target = await this.projectService.addTargetToProject(id, sanitizedName, sanitizedUrl, type);
       return res.json(Formatter.success(target, "تم إضافة الهدف للمشروع بنجاح"));

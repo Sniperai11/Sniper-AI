@@ -76,6 +76,7 @@ app.get("/api/live", healthCheckHandler);
 
 // Mount the modular backend API routes
 app.use("/api", apiLimiter, apiRouter);
+app.use("/api/v1", apiLimiter, apiRouter); // V1 versioning
 
 // Global API 404 Route handler
 app.use("/api/*", (req, res) => {

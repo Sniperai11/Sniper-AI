@@ -44,21 +44,25 @@ export const tasksService = {
   getTasks: async (params?: { search?: string; status?: string }): Promise<TaskWorkflow[]> => {
     let tasks: TaskWorkflow[] = [];
     try {
-      const response = await apiClient.get<any>('/remediations');
+      const response = await apiClient.get<any>('/tasks');
       const list = Array.isArray(response) ? response : (response?.data || []);
       tasks = list.map((item: any) => ({
         id: item.id || `TSK-REM-${Math.floor(100 + Math.random() * 900)}`,
-        title: item.actionPlan || item.title || 'مهمة معالجة أمنية',
-        status: item.status === 'Completed' ? 'Done' : 'In Progress',
-        assignee: 'مطور الأنظمة',
-        dueDate: new Date(Date.now() + 86400000 * 3).toISOString(),
-        createdAt: new Date().toISOString()
+        title: item.title || item.actionPlan || 'مهمة معالجة أمنية',
+        status: item.status || 'To Do',
+        assignee: item.assignee || 'مطور الأنظمة',
+        dueDate: item.dueDate || new Date(Date.now() + 86400000 * 3).toISOString(),
+        linkedEntity: item.linkedEntity,
+        createdAt: item.createdAt || new Date().toISOString(),
+        severity: item.severity,
+        description: item.description,
+        remediation: item.remediation,
+        location: item.location,
+        targetName: item.targetName
       }));
     } catch {
-      tasks = [];
+      tasks = defaultTasks;
     }
-
-
 
     if (params?.search) {
       const q = params.search.toLowerCase();
@@ -78,29 +82,46 @@ export const tasksService = {
   },
   
   createTask: async (data: Partial<TaskWorkflow>): Promise<TaskWorkflow> => {
-    const newTask: TaskWorkflow = {
-      id: `TSK-REM-${Math.floor(100 + Math.random() * 900)}`,
-      title: data.title || 'مهمة معالجة أمنية جديدة',
-      status: data.status || 'To Do',
-      assignee: data.assignee || 'Unassigned',
-      dueDate: data.dueDate || new Date(Date.now() + 86400000 * 7).toISOString(),
-      linkedEntity: data.linkedEntity,
-      createdAt: new Date().toISOString()
-    };
-    return newTask;
+    try {
+      const res = await apiClient.post<any>('/tasks', data);
+      return res?.data || res;
+    } catch {
+      return {
+        id: `TSK-REM-${Math.floor(100 + Math.random() * 900)}`,
+        title: data.title || 'مهمة معالجة أمنية جديدة',
+        status: data.status || 'To Do',
+        assignee: data.assignee || 'Unassigned',
+        dueDate: data.dueDate || new Date(Date.now() + 86400000 * 7).toISOString(),
+        linkedEntity: data.linkedEntity,
+        createdAt: new Date().toISOString()
+      };
+    }
   },
   
   updateTaskStatus: async (id: string, status: TaskWorkflow['status']): Promise<TaskWorkflow> => {
-    const tasks = await tasksService.getTasks();
-    const matched = tasks.find(t => t.id === id);
-    if (!matched) throw new Error("Task not found");
-    return { ...matched, status };
+    try {
+      const res = await apiClient.patch<any>(`/tasks/${id}`, { status });
+      return res?.data || res;
+    } catch {
+      const tasks = await tasksService.getTasks();
+      const matched = tasks.find(t => t.id === id);
+      return { ...matched, id, status: status || 'Done' } as TaskWorkflow;
+    }
   },
   
   updateTask: async (id: string, updates: Partial<TaskWorkflow>): Promise<TaskWorkflow> => {
-    const tasks = await tasksService.getTasks();
-    const matched = tasks.find(t => t.id === id);
-    if (!matched) throw new Error("Task not found");
-    return { ...matched, ...updates };
+    try {
+      const res = await apiClient.patch<any>(`/tasks/${id}`, updates);
+      return res?.data || res;
+    } catch {
+      const tasks = await tasksService.getTasks();
+      const matched = tasks.find(t => t.id === id);
+      return { ...matched, ...updates } as TaskWorkflow;
+    }
+  },
+
+  performAIRemediation: async (id: string): Promise<any> => {
+    const res = await apiClient.post<any>(`/tasks/${id}/ai-remediate`);
+    return res?.data || res;
   }
 };

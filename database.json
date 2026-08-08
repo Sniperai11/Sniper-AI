@@ -1,149 +1,396 @@
 {
   "teamMembers": [
     {
-      "id": "tm-1",
-      "name": "إبراهيم العتيبي",
-      "email": "elhammoh2795@gmail.com",
+      "id": "tm-admin-1",
+      "companyId": "comp-1",
+      "name": "المسؤول الرئيسي (System Admin)",
+      "email": "alridwanykick@gmail.com",
+      "password": "R00t@2025",
       "role": "Admin",
-      "joinedAt": "2026-01-10T12:00:00Z"
-    },
-    {
-      "id": "tm-2",
-      "name": "أحمد الشمري",
-      "email": "ahmed.security@digitaltech.sa",
-      "role": "Security Analyst",
-      "joinedAt": "2026-02-15T09:30:00Z"
-    },
-    {
-      "id": "tm-3",
-      "name": "سارة القحطاني",
-      "email": "sara.viewer@digitaltech.sa",
-      "role": "Viewer",
-      "joinedAt": "2026-04-01T14:15:00Z"
+      "joinedAt": "2026-07-28T09:00:00Z"
     }
   ],
-  "subscription": {
-    "plan": "Professional",
-    "status": "active",
-    "currentPeriodEnd": "2026-08-18T09:30:00Z",
-    "limits": {
-      "maxProjects": 10,
-      "maxTargetsPerProject": 5,
-      "scansPerMonth": 50,
-      "scansRemainingThisMonth": 34,
-      "aiConsultationsPerMonth": 200,
-      "aiConsultationsRemaining": 167
-    },
-    "cost": 149
-  },
+  "companies": [
+    {
+      "id": "comp-1",
+      "name": "منصة Sniper AI Security",
+      "ownerEmail": "alridwanykick@gmail.com",
+      "joinedAt": "2026-07-28T09:00:00.000Z"
+    }
+  ],
+  "users": [
+    {
+      "id": 1,
+      "uid": "usr-admin-1",
+      "email": "alridwanykick@gmail.com",
+      "name": "المسؤول الرئيسي (System Admin)",
+      "role": "Admin",
+      "createdAt": "2026-07-28T09:00:00.000Z"
+    }
+  ],
+  "subscription": [
+    {
+      "id": 1,
+      "companyId": "comp-1",
+      "plan": "Enterprise",
+      "status": "active",
+      "currentPeriodEnd": "2026-12-31T00:00:00.000Z",
+      "cost": 599,
+      "limits": {
+        "maxProjects": 100,
+        "maxTargetsPerProject": 30,
+        "scansPerMonth": 500,
+        "scansRemainingThisMonth": 499,
+        "aiConsultationsPerMonth": 1000,
+        "aiConsultationsRemaining": 999
+      }
+    }
+  ],
   "auditLogs": [
     {
-      "id": "log-1",
+      "id": "log-1785870667967",
+      "companyId": "comp-1",
       "userId": "tm-1",
-      "userEmail": "elhammoh2795@gmail.com",
-      "action": "تسجيل الدخول",
-      "details": "تم تسجيل الدخول إلى المنصة بنجاح عبر بريد elhammoh2795@gmail.com",
+      "userEmail": "alridwanykick@gmail.com",
+      "action": "إنشاء تقرير أمني",
+      "details": "تم إصدار التقرير الأمني التفصيلي لمشروع: مشروع النطاقات الرئيسية (Core Infrastructure)",
       "ipAddress": "192.168.1.55",
-      "timestamp": "2026-07-18T08:12:00Z"
+      "timestamp": "2026-08-04T19:11:07.967Z"
     },
     {
-      "id": "log-2",
+      "id": "log-1785871250690",
+      "companyId": "comp-1",
       "userId": "tm-1",
-      "userEmail": "elhammoh2795@gmail.com",
+      "userEmail": "alridwanykick@gmail.com",
+      "action": "إنشاء مشروع",
+      "details": "تم إنشاء مشروع أمني جديد: Sniper",
+      "ipAddress": "192.168.1.55",
+      "timestamp": "2026-08-04T19:20:50.690Z"
+    },
+    {
+      "id": "log-1785871316017",
+      "companyId": "comp-1",
+      "userId": "tm-1",
+      "userEmail": "alridwanykick@gmail.com",
       "action": "إضافة هدف أمني",
-      "details": "إضافة النطاق dev.api.digitaltech.sa للتحقق والتحليل",
+      "details": "تم إضافة هدف الفحص: Sniper ai (https://sniperai-v2-1-322173143738.europe-west1.run.app/#) تحت مشروع مشروع النطاقات الرئيسية (Core Infrastructure)",
       "ipAddress": "192.168.1.55",
-      "timestamp": "2026-07-18T08:45:00Z"
+      "timestamp": "2026-08-04T19:21:56.017Z"
     },
     {
-      "id": "log-3",
-      "userId": "tm-2",
-      "userEmail": "ahmed.security@digitaltech.sa",
-      "action": "التحقق من الملكية",
-      "details": "تم إكمال التحقق من ملكية الموقع الرئيسي بنجاح (رمز DNS)",
-      "ipAddress": "192.168.1.59",
-      "timestamp": "2026-07-18T09:05:00Z"
+      "id": "log-1785871318667",
+      "companyId": "comp-1",
+      "userId": "tm-1",
+      "userEmail": "alridwanykick@gmail.com",
+      "action": "تحقق الملكية",
+      "details": "تم تأكيد ملكية الهدف الأمني Sniper ai (https://sniperai-v2-1-322173143738.europe-west1.run.app/#) بنجاح",
+      "ipAddress": "192.168.1.55",
+      "timestamp": "2026-08-04T19:21:58.667Z"
+    },
+    {
+      "id": "log-1785871327329",
+      "companyId": "comp-1",
+      "userId": "tm-admin-1",
+      "userEmail": "alridwanykick@gmail.com",
+      "action": "بدء فحص أمني حقيقي",
+      "details": "تم إطلاق فحص أمني للهدف: Sniper ai بواسطة alridwanykick@gmail.com",
+      "ipAddress": "192.168.1.55",
+      "timestamp": "2026-08-04T19:22:07.329Z"
+    },
+    {
+      "id": "log-1785871611911",
+      "companyId": "comp-1",
+      "userId": "tm-1",
+      "userEmail": "alridwanykick@gmail.com",
+      "action": "إنشاء تقرير أمني",
+      "details": "تم إصدار التقرير الأمني التفصيلي لمشروع: مشروع النطاقات الرئيسية (Core Infrastructure)",
+      "ipAddress": "192.168.1.55",
+      "timestamp": "2026-08-04T19:26:51.911Z"
+    },
+    {
+      "id": "log-1785871861243",
+      "companyId": "comp-1",
+      "userId": "tm-1",
+      "userEmail": "alridwanykick@gmail.com",
+      "action": "ترميم تلقائي للثغرات (Auto-Remediation)",
+      "details": "تم تطبيق المعالجة الذاتية بنجاح للثغرة: حقن لغة الاستعلامات البنائية SQL (SQL Injection) في حقل المستفيد (خطورة: Critical)",
+      "ipAddress": "192.168.1.55",
+      "timestamp": "2026-08-04T19:31:01.243Z"
+    },
+    {
+      "id": "log-1785871863546",
+      "companyId": "comp-1",
+      "userId": "tm-1",
+      "userEmail": "alridwanykick@gmail.com",
+      "action": "ترميم تلقائي للثغرات (Auto-Remediation)",
+      "details": "تم تطبيق المعالجة الذاتية بنجاح للثغرة: حقن لغة الاستعلامات البنائية SQL (SQL Injection) في حقل المستفيد (خطورة: Critical)",
+      "ipAddress": "192.168.1.55",
+      "timestamp": "2026-08-04T19:31:03.546Z"
+    },
+    {
+      "id": "log-1785871863552",
+      "companyId": "comp-1",
+      "userId": "tm-1",
+      "userEmail": "alridwanykick@gmail.com",
+      "action": "ترميم تلقائي للثغرات (Auto-Remediation)",
+      "details": "تم تطبيق المعالجة الذاتية بنجاح للثغرة: حقن لغة الاستعلامات البنائية SQL (SQL Injection) في حقل المستفيد (خطورة: Critical)",
+      "ipAddress": "192.168.1.55",
+      "timestamp": "2026-08-04T19:31:03.552Z"
+    },
+    {
+      "id": "log-1785871863558",
+      "companyId": "comp-1",
+      "userId": "tm-1",
+      "userEmail": "alridwanykick@gmail.com",
+      "action": "ترميم تلقائي للثغرات (Auto-Remediation)",
+      "details": "تم تطبيق المعالجة الذاتية بنجاح للثغرة: حقن لغة الاستعلامات البنائية SQL (SQL Injection) في حقل المستفيد (خطورة: Critical)",
+      "ipAddress": "192.168.1.55",
+      "timestamp": "2026-08-04T19:31:03.558Z"
+    },
+    {
+      "id": "log-1785871863566",
+      "companyId": "comp-1",
+      "userId": "tm-1",
+      "userEmail": "alridwanykick@gmail.com",
+      "action": "ترميم تلقائي للثغرات (Auto-Remediation)",
+      "details": "تم تطبيق المعالجة الذاتية بنجاح للثغرة: حقن لغة الاستعلامات البنائية SQL (SQL Injection) في حقل المستفيد (خطورة: Critical)",
+      "ipAddress": "192.168.1.55",
+      "timestamp": "2026-08-04T19:31:03.566Z"
+    },
+    {
+      "id": "log-1785872007389",
+      "companyId": "comp-1",
+      "userId": "tm-1",
+      "userEmail": "alridwanykick@gmail.com",
+      "action": "إنشاء تقرير أمني",
+      "details": "تم إصدار التقرير الأمني التفصيلي لمشروع: مشروع النطاقات الرئيسية (Core Infrastructure)",
+      "ipAddress": "192.168.1.55",
+      "timestamp": "2026-08-04T19:33:27.389Z"
+    },
+    {
+      "id": "log-1785872031219",
+      "companyId": "comp-1",
+      "userId": "tm-1",
+      "userEmail": "alridwanykick@gmail.com",
+      "action": "إنشاء تقرير أمني",
+      "details": "تم إصدار التقرير الأمني التفصيلي لمشروع: مشروع النطاقات الرئيسية (Core Infrastructure)",
+      "ipAddress": "192.168.1.55",
+      "timestamp": "2026-08-04T19:33:51.219Z"
     }
   ],
   "projects": [
     {
       "id": "proj-1",
-      "name": "مشروع بوابة العملاء والواجهات البرمجية",
-      "description": "البنية التحتية الرئيسية لخدمات عملاء شركة DigitalTech وتطبيقات الدفع المرافقة لها.",
-      "createdAt": "2026-03-01T10:00:00Z",
-      "targets": [
-        {
-          "id": "tar-1",
-          "name": "البوابة الرئيسية للعملاء",
-          "url": "https://portal.digitaltech.sa",
-          "type": "Website",
-          "verificationToken": "ai-sec-audit-hash-88c9f0e1b2",
-          "verificationStatus": "Verified",
-          "verifiedAt": "2026-03-02T11:00:00Z",
-          "lastScanAt": "2026-07-15T14:30:00Z",
-          "currentRiskScore": 34
-        },
-        {
-          "id": "tar-2",
-          "name": "واجهة الخدمات المالية",
-          "url": "https://api.digitaltech.sa/v2/payments",
-          "type": "API",
-          "verificationToken": "ai-sec-audit-hash-fa44923e8c",
-          "verificationStatus": "Verified",
-          "verifiedAt": "2026-03-03T09:15:00Z",
-          "lastScanAt": "2026-07-17T18:00:00Z",
-          "currentRiskScore": 82
-        },
-        {
-          "id": "tar-3",
-          "name": "تطبيق المحفظة الرقمية",
-          "url": "https://play.google.com/store/apps/details?id=sa.digitaltech.wallet",
-          "type": "Mobile",
-          "verificationToken": "ai-sec-audit-hash-01ddbc8f42",
-          "verificationStatus": "Pending",
-          "verificationStatusDetails": "يرجى رفع ملف التحقق ai-security-verification.txt إلى المسار الرئيسي للموقع أو إثبات ملكية المتجر."
-        }
-      ]
+      "companyId": "comp-1",
+      "name": "مشروع النطاقات الرئيسية (Core Infrastructure)",
+      "description": "فحص البنية التحتية الرئيسية للمؤسسة والبوابات الإلكترونية.",
+      "createdAt": "2026-01-15T08:00:00.000Z"
     },
     {
       "id": "proj-2",
-      "name": "نظام التوريد الداخلي (ERP)",
-      "description": "فحص أمني داخلي للمستودعات وواجهات التبادل مع الموردين الخارجيين.",
-      "createdAt": "2026-05-12T08:00:00Z",
-      "targets": [
-        {
-          "id": "tar-4",
-          "name": "الشيفرة المصدرية لنظام ERP",
-          "url": "git@github.com:digitaltech-sa/erp-backend.git",
-          "type": "Source Code",
-          "verificationToken": "ai-sec-audit-hash-990a1f2b3c",
-          "verificationStatus": "Verified",
-          "verifiedAt": "2026-05-13T10:20:00Z",
-          "lastScanAt": "2026-06-20T16:00:00Z",
-          "currentRiskScore": 12
-        }
-      ]
+      "companyId": "comp-1",
+      "name": "مشروع تطبيقات الجوال (Mobile Apps Fleet)",
+      "description": "فحص تطبيقات iOS & Android وواجهات API المرتبطة بها.",
+      "createdAt": "2026-02-01T10:00:00.000Z"
+    },
+    {
+      "id": "proj-1785871250688",
+      "companyId": "comp-1",
+      "name": "Sniper",
+      "description": "BI",
+      "createdAt": "2026-08-04T19:20:50.688Z"
+    }
+  ],
+  "targets": [
+    {
+      "id": "tgt-1",
+      "projectId": "proj-1",
+      "name": "البوابة الرئيسية (Main Gateway)",
+      "url": "https://portal.sniper-sec.local",
+      "type": "Web App",
+      "verificationStatus": "Verified",
+      "verifiedAt": "2026-08-04T19:21:58.665Z",
+      "lastScanAt": "2026-08-04T19:22:37.744Z",
+      "currentRiskScore": 95
+    },
+    {
+      "id": "tgt-2",
+      "projectId": "proj-1",
+      "name": "سيرفر الهوية والتوثيق (Auth Server)",
+      "url": "https://auth.sniper-sec.local",
+      "type": "API",
+      "verificationStatus": "Verified",
+      "verifiedAt": "2026-08-04T19:21:58.665Z",
+      "lastScanAt": "2026-08-04T19:22:37.744Z",
+      "currentRiskScore": 95
+    },
+    {
+      "id": "tgt-3",
+      "projectId": "proj-2",
+      "name": "تطبيق العملاء (Mobile Client API)",
+      "url": "https://api.app.sniper-sec.local",
+      "type": "API",
+      "verificationStatus": "Verified",
+      "verifiedAt": "2026-08-04T19:21:58.665Z",
+      "lastScanAt": "2026-08-04T19:22:37.744Z",
+      "currentRiskScore": 95
+    },
+    {
+      "id": "tar-1785871316016",
+      "projectId": "proj-1785871250688",
+      "name": "Sniper ai",
+      "url": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#",
+      "type": "Website",
+      "verificationToken": "ai-sec-audit-hash-wyq4siea88",
+      "verificationStatus": "Verified",
+      "verificationStatusDetails": null,
+      "verifiedAt": "2026-08-04T19:21:58.665Z",
+      "lastScanAt": "2026-08-04T19:22:37.744Z",
+      "currentRiskScore": 95
+    },
+    {
+      "id": "tar-1",
+      "projectId": "proj-1",
+      "name": "tar-1",
+      "url": "https://tar-1",
+      "type": "Website",
+      "verificationToken": "ai-sec-audit-1785871853239",
+      "verificationStatus": "Verified",
+      "verificationStatusDetails": null,
+      "verifiedAt": "2026-08-04T19:30:53.239Z",
+      "lastScanAt": null,
+      "currentRiskScore": 50
+    }
+  ],
+  "assets": [
+    {
+      "id": "asset-tgt-1",
+      "projectId": "proj-1",
+      "name": "البوابة الرئيسية (Main Gateway)",
+      "type": "Web App",
+      "createdAt": "2026-08-04T19:08:05.001Z"
+    },
+    {
+      "id": "asset-tgt-2",
+      "projectId": "proj-1",
+      "name": "سيرفر الهوية والتوثيق (Auth Server)",
+      "type": "API",
+      "createdAt": "2026-08-04T19:08:05.001Z"
+    },
+    {
+      "id": "asset-tgt-3",
+      "projectId": "proj-2",
+      "name": "تطبيق العملاء (Mobile Client API)",
+      "type": "API",
+      "createdAt": "2026-08-04T19:08:05.001Z"
+    }
+  ],
+  "activeScans": [
+    {
+      "id": "scan-1785871327327",
+      "targetId": "tar-1785871316016",
+      "targetName": "Sniper ai",
+      "userId": "tm-admin-1",
+      "userEmail": "alridwanykick@gmail.com",
+      "status": "Completed",
+      "progress": 100,
+      "startedAt": "2026-08-04T19:22:07.327Z",
+      "completedAt": "2026-08-04T19:22:37.744Z",
+      "scannerLogs": [
+        "[2026-08-04T19:22:07.327Z] تم بدء تهيئة بيئة الفحص الأمني للهدف: Sniper ai...",
+        "[2026-08-04T19:22:07.327Z] ربط الفحص بحساب المستخدم المعتمد: alridwanykick@gmail.com",
+        "[2026-08-04T19:22:07.327Z] جاري الكشف عن نوع التطبيق وبدء تجميع المعلومات...",
+        "[+] تهيئة وإطلاق محرك فحص الشركات الاحترافي (Enterprise Scanner Engine)...",
+        "[+] جاري الاتصال المباشر واستطلاع الاستجابة الفعلية للنطاق: https://sniperai-v2-1-322173143738.europe-west1.run.app/#",
+        "[+] تم الاتصال المباشر بنجاح: HTTP 200 OK",
+        "[+] ترويسة الخادم المكتشفة: Server = Google Frontend",
+        "[+] ملف الفحص المختار: DEEP",
+        "🔍 Phase 1: Validating target format and compliance eligibility...",
+        "✅ Target validation succeeded. Proceeding with 5 security scanners.",
+        "⚙️ Phase 2: Preparing and initializing selected scanner plugins...",
+        "Initializing Nmap Network Scanner...",
+        "Initializing Nuclei Template Scanner...",
+        "Initializing OWASP ZAP DAST Scanner...",
+        "Initializing Nikto Web Server Scanner...",
+        "Initializing Sqlmap Database Injection Scanner...",
+        "⚡ Phase 3-5: Executing scan jobs (Concurrency limit: 4)...",
+        "Processing scan batch 1/2...",
+        "[Nmap Network Scanner] Executing active scanner routines...",
+        "[2026-08-04T19:22:12.519Z] [Nmap Network Scanner] Starting Nmap port discovery scan on target: https://sniperai-v2-1-322173143738.europe-west1.run.app/#",
+        "[2026-08-04T19:22:12.519Z] [Nmap Network Scanner] Checking nmap executable presence...",
+        "[2026-08-04T19:22:12.519Z] [Nmap Network Scanner] Simulating host discovery and TCP SYN scan...",
+        "[Nuclei Template Scanner] Executing active scanner routines...",
+        "[2026-08-04T19:22:12.520Z] [Nuclei Template Scanner] Loading Nuclei security templates on target: https://sniperai-v2-1-322173143738.europe-west1.run.app/#",
+        "[2026-08-04T19:22:12.520Z] [Nuclei Template Scanner] Templates count loaded: 4322 (CVEs, Web-vulnerabilities, panels, etc.)",
+        "[OWASP ZAP DAST Scanner] Executing active scanner routines...",
+        "[2026-08-04T19:22:12.520Z] [OWASP ZAP DAST Scanner] Starting OWASP ZAP active spidering on target URL: https://sniperai-v2-1-322173143738.europe-west1.run.app/#",
+        "[Nikto Web Server Scanner] Executing active scanner routines...",
+        "[2026-08-04T19:22:12.520Z] [Nikto Web Server Scanner] Initializing Nikto web server scanning on: https://sniperai-v2-1-322173143738.europe-west1.run.app/#",
+        "[2026-08-04T19:22:14.021Z] [Nmap Network Scanner] Host is UP. Scanning top 100 ports...",
+        "[2026-08-04T19:22:14.022Z] [Nuclei Template Scanner] Running active verification checks...",
+        "[2026-08-04T19:22:14.023Z] [OWASP ZAP DAST Scanner] Spider crawled 14 URLs. Launching active scanner policies...",
+        "[2026-08-04T19:22:14.023Z] [Nikto Web Server Scanner] Testing web server directory traversals and index files...",
+        "[2026-08-04T19:22:15.022Z] [Nmap Network Scanner] Port scan complete. Discovered 3 open ports with active service banners.",
+        "[Nmap Network Scanner] Parsing raw security payload results...",
+        "[Nmap Network Scanner] Normalizing 2 raw findings into CVE/OWASP-compliant data schema...",
+        "[Nmap Network Scanner] Scan completed successfully in 2.50s. Discovered 2 compliant findings.",
+        "[2026-08-04T19:22:15.025Z] [Nuclei Template Scanner] Found matching signature: exposed-git-directory",
+        "[2026-08-04T19:22:15.025Z] [Nuclei Template Scanner] Found matching signature: CORS-misconfiguration",
+        "[Nuclei Template Scanner] Parsing raw security payload results...",
+        "[Nuclei Template Scanner] Normalizing 2 raw findings into CVE/OWASP-compliant data schema...",
+        "[Nuclei Template Scanner] Scan completed successfully in 2.51s. Discovered 2 compliant findings.",
+        "[Nikto Web Server Scanner] Parsing raw security payload results...",
+        "[Nikto Web Server Scanner] Normalizing 1 raw findings into CVE/OWASP-compliant data schema...",
+        "[Nikto Web Server Scanner] Scan completed successfully in 2.51s. Discovered 1 compliant findings.",
+        "[2026-08-04T19:22:15.225Z] [OWASP ZAP DAST Scanner] Completed injection and parameter tampering modules. Discovered 2 passive alerts.",
+        "[OWASP ZAP DAST Scanner] Parsing raw security payload results...",
+        "[OWASP ZAP DAST Scanner] Normalizing 2 raw findings into CVE/OWASP-compliant data schema...",
+        "[OWASP ZAP DAST Scanner] Scan completed successfully in 2.71s. Discovered 2 compliant findings.",
+        "Processing scan batch 2/2...",
+        "[Sqlmap Database Injection Scanner] Executing active scanner routines...",
+        "[2026-08-04T19:22:15.229Z] [Sqlmap Database Injection Scanner] Initializing Sqlmap payload injections on query parameters: https://sniperai-v2-1-322173143738.europe-west1.run.app/#",
+        "[2026-08-04T19:22:16.729Z] [Sqlmap Database Injection Scanner] Testing Boolean-based blind, Union query-based, and Time-based blind SQLi...",
+        "[Sqlmap Database Injection Scanner] Parsing raw security payload results...",
+        "[Sqlmap Database Injection Scanner] Normalizing 1 raw findings into CVE/OWASP-compliant data schema...",
+        "[Sqlmap Database Injection Scanner] Scan completed successfully in 2.51s. Discovered 1 compliant findings.",
+        "🏁 Enterprise Scanner pipeline finalized in 5.23s. Total normalized findings: 8",
+        "[+] اكتمل فحص الأدوات الموحدة. جاري معالجة النتائج وتطبيق التصفية والمطابقة الفنية...",
+        "[+] استدعاء AI Security Auditor للتحقق من نتائج الفحص وإثرائها...",
+        "[+] جاري إصدار التقارير ومطابقة معايير الامتثال الموحدة (OWASP, PCI DSS, ISO 27001)...",
+        "[+] تم تأكيد وتوثيق 8 ثغرات أمنية حقيقية ومطابقتها للمعايير.",
+        "[+] تحديث درجة المخاطر الإجمالية للهدف الأمني إلى: 95%",
+        "[+] الفحص والتحليل الأمني الحقيقي للمؤسسات اكتمل بنجاح 100%."
+      ],
+      "vulnerabilitiesFoundCount": {
+        "Critical": 2,
+        "High": 1,
+        "Medium": 3,
+        "Low": 2
+      }
     }
   ],
   "vulnerabilities": [
     {
       "id": "vuln-1",
-      "targetId": "tar-2",
-      "targetName": "واجهة الخدمات المالية (API)",
+      "targetId": "tar-1",
+      "targetName": "الموقع الرئيسي (Frontend)",
       "title": "حقن لغة الاستعلامات البنائية SQL (SQL Injection) في حقل المستفيد",
-      "type": "SQL Injection",
+      "type": "SQLi",
       "severity": "Critical",
       "cvssScore": 9.8,
-      "location": "POST /v2/payments - Parameter: recipient_id",
-      "description": "تسمح المعلمة المستلمة بإدخال تعبيرات SQL برمجية دون تنظيف كافٍ للمدخلات. نجح الفاحص في استرجاع أسماء الجداول وقراءة تفاصيل الحسابات السرية لعملاء آخرين عن طريق إدخال قيم مثل ' UNION SELECT password, email FROM users--.",
-      "impact": "تمكين المهاجم من تخطي نظام المصادقة بالكامل، قراءة وتعديل وحذف البيانات المالية لجميع العملاء، والسيطرة الكاملة على قاعدة بيانات المدفوعات.",
-      "remediation": "استخدام الاستعلامات المعلمية (Parameterized Queries) أو الـ ORM في بناء استعلامات قاعدة البيانات وتجنب دمج المدخلات نصياً بأي حال. كذلك تفعيل طبقة تعقيم إضافية.",
+      "location": "/api/login",
+      "description": "تسمح المعلمة المستلمة بإدخال تعبيرات SQL برمجية دون تنظيف كافٍ للمدخلات. نجح الفاحص في استرجاع أسماء الجداول وقراءة تفاصيل الحسابات السرية لعملاء آخرين.",
+      "impact": "الوصول الكامل وغير المصرح به لقاعدة البيانات الرئيسية وإمكانية استخراج البيانات وحذف البيانات.",
+      "remediation": "تحديث كافة الاستعلامات إلى Parameterized Queries وإيقاف الدمج النصي المباشر.",
       "isFalsePositive": false,
       "complianceMapping": {
         "owasp": "A03:2021-Injection",
-        "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
-        "pciDss": "Requirement 6.5.1"
-      }
+        "iso27001": "A.14.2",
+        "pciDss": "Req 6.5.1"
+      },
+      "state": "Resolved",
+      "owner": "SecOps Analyst",
+      "createdAt": "2026-08-04T19:08:19.004Z"
     },
     {
       "id": "vuln-2",
@@ -153,35 +400,41 @@
       "type": "Sensitive Data Exposure",
       "severity": "High",
       "cvssScore": 7.5,
-      "location": "GET /v2/payments/config - Response Object",
+      "location": "GET /v2/payments/config",
       "description": "تقوم واجهة Config بإرجاع كائن يحتوي على مفاتيح API لبيئة تجريبية ومفاتيح JWT السريّة الخاصة بالنطاق الداخلي بشكل غير مقصود للمستخدمين غير المصرح لهم.",
-      "impact": "يمكن استخدام المفاتيح السريّة المكشوفة في توقيع صلاحيات زائفة كمدير للنظام أو إجراء دفعات مالية وهمية في البيئة الإنتاجية.",
-      "remediation": "إزالة كتل التكوين الحساسة من استجابة الـ API واستخدام متغيرات البيئة الآمنة وتدريب المهندسين على تصفية كتل الاستجابة.",
+      "impact": "تسريب مفاتيح تشفير داخلية يسمح بتزوير صلاحيات المستخدمين والمسؤولين.",
+      "remediation": "إزالة كتل التكوين الحساسة من استجابة الـ API واستخدام متغيرات البيئة الآمنة .env.",
       "isFalsePositive": false,
       "complianceMapping": {
-        "owasp": "A02:2021-Cryptographic Failures",
-        "iso27001": "A.14.1.2 تأمين الخدمات على الشبكات العامة",
-        "pciDss": "Requirement 4.1"
-      }
+        "owasp": "A01:2021-Broken Access Control",
+        "iso27001": "A.8.24",
+        "pciDss": "Req 6.5.1"
+      },
+      "state": "Resolved",
+      "owner": "SecOps Analyst",
+      "createdAt": "2026-08-04T19:08:19.004Z"
     },
     {
       "id": "vuln-3",
       "targetId": "tar-1",
       "targetName": "البوابة الرئيسية للعملاء",
       "title": "ثغرة البرمجة العابرة للمواقع (Stored XSS) في حقل الاسم المستعار",
-      "type": "Stored XSS",
+      "type": "XSS",
       "severity": "Medium",
       "cvssScore": 6.1,
-      "location": "POST /api/user/profile - Parameter: nickname",
+      "location": "/profile/nickname",
       "description": "يتم حفظ اسم العميل المستعار دون تشفير وسوم HTML أو JavaScript، ليتم عرضه لاحقاً في لوحة التحكم الإدارية لشركة الدعم الفني مما يؤدي لتنفيذ التعليمات فور تحميل الصفحة.",
-      "impact": "سرقة ملفات تعريف الارتباط (Session Cookies) للموظفين والإداريين والسيطرة على جلسات العمل الخاصة بهم بمجرد تصفحهم لملف العميل المتأثر.",
-      "remediation": "تعقيم جميع المدخلات باستخدام مكتبات مخصصة مثل DOMPurify وتأمين تشفير المخرجات (Output Encoding) قبل رندرتها في المتصفح.",
+      "impact": "سرقة الكوكيز وجلسات عمل مدراء النظام وممثلي الدعم الفني.",
+      "remediation": "تطهير جميع المدخلات باستخدام DOMPurify وتأمين تشفير المخرجات Output Encoding.",
       "isFalsePositive": false,
       "complianceMapping": {
         "owasp": "A03:2021-Injection",
-        "iso27001": "A.14.2.5 مبادئ هندسة النظم الآمنة",
-        "pciDss": "Requirement 6.5.7"
-      }
+        "iso27001": "A.12.6",
+        "pciDss": "Req 6.5.7"
+      },
+      "state": "Resolved",
+      "owner": "SecOps Analyst",
+      "createdAt": "2026-08-04T19:08:19.004Z"
     },
     {
       "id": "vuln-4",
@@ -191,16 +444,195 @@
       "type": "Information Disclosure",
       "severity": "Low",
       "cvssScore": 3.2,
-      "location": "HTTP Response Header: Server, X-Powered-By",
+      "location": "Server Response Headers",
       "description": "يعود الخادم بالترويسة Server: Apache/2.4.41 (Ubuntu) والترويسة X-Powered-By: PHP/7.4.3، مما يساعد المهاجمين على استهداف إصدارات النظام المحددة مباشرة.",
-      "impact": "تسهيل مهمة الاستطلاع وجمع المعلومات للمهاجم لاكتشاف الثغرات الجاهزة لهذا الإصدار.",
-      "remediation": "تعديل إعدادات خادم الويب (Apache/Nginx) لإخفاء معلومات ترويسات الاستجابة وإيقاف إرسال تفاصيل الخادم.",
+      "impact": "مساعدة المهاجمين في الاستطلاع المباشر ومعرفة ثغرات الإصدارات المستخدمة.",
+      "remediation": "إيقاف إرسال ترويسات Server و X-Powered-By في إعدادات Nginx / Apache.",
+      "isFalsePositive": false,
+      "complianceMapping": {
+        "owasp": "A05:2021-Security Misconfiguration",
+        "iso27001": "A.12.1",
+        "pciDss": "Req 2.2"
+      },
+      "state": "Resolved",
+      "owner": "SecOps Analyst",
+      "createdAt": "2026-08-04T19:08:19.004Z"
+    },
+    {
+      "id": "vuln-1785871357741-0-12hv",
+      "targetId": "tar-1785871316016",
+      "targetName": "Sniper ai",
+      "title": "SSH Protocol Service Banner Leak",
+      "type": "Information Disclosure",
+      "severity": "Low",
+      "cvssScore": 2.5,
+      "location": "Port 22/ssh",
+      "description": "The SSH server on port 22 exposes a detailed service version banner.",
+      "impact": "Attackers can use banner information to map exact vulnerabilities and exploit target services.",
+      "remediation": "Disable or genericize version banners in SSH configuration (DebianBanner no).",
       "isFalsePositive": false,
       "complianceMapping": {
         "owasp": "A05:2021-Security Misconfiguration",
         "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
-        "pciDss": "Requirement 6.5.8"
-      }
+        "pciDss": "Requirement 6.5"
+      },
+      "state": "Resolved",
+      "owner": "SecOps Analyst",
+      "createdAt": "2026-08-04T19:22:37.741Z"
+    },
+    {
+      "id": "vuln-1785871357741-1-oiiq",
+      "targetId": "tar-1785871316016",
+      "targetName": "Sniper ai",
+      "title": "Outdated Web Server Service Detected (Apache 2.4.41)",
+      "type": "Outdated Software",
+      "severity": "Medium",
+      "cvssScore": 5.5,
+      "location": "Port 80/http",
+      "description": "The Apache server version is outdated and may contain publicly disclosed CVEs.",
+      "impact": "Attackers can use banner information to map exact vulnerabilities and exploit target services.",
+      "remediation": "Upgrade Apache to the latest stable release (>= 2.4.58).",
+      "isFalsePositive": false,
+      "complianceMapping": {
+        "owasp": "A05:2021-Security Misconfiguration",
+        "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+        "pciDss": "Requirement 6.5"
+      },
+      "state": "Resolved",
+      "owner": "SecOps Analyst",
+      "createdAt": "2026-08-04T19:22:37.741Z"
+    },
+    {
+      "id": "vuln-1785871357741-2-prwj",
+      "targetId": "tar-1785871316016",
+      "targetName": "Sniper ai",
+      "title": "Exposed Git Directory Leak",
+      "type": "Template Misconfiguration",
+      "severity": "Critical",
+      "cvssScore": 9.5,
+      "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/.git/config",
+      "description": "Exposing the .git directory allows anyone to download your entire repository source code, including configuration secrets.",
+      "impact": "Full access to git repository metadata exposes proprietary code and database secrets. CORS bypass allows unauthorized cross-origin requests.",
+      "remediation": "Block access to .git folders using .htaccess, Nginx configs, or server-level rules.",
+      "isFalsePositive": false,
+      "complianceMapping": {
+        "owasp": "A05:2021-Security Misconfiguration",
+        "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+        "pciDss": "Requirement 6.5"
+      },
+      "state": "Resolved",
+      "owner": "SecOps Analyst",
+      "createdAt": "2026-08-04T19:22:37.741Z"
+    },
+    {
+      "id": "vuln-1785871357741-3-l5ml",
+      "targetId": "tar-1785871316016",
+      "targetName": "Sniper ai",
+      "title": "Permissive Cross-Origin Resource Sharing (CORS)",
+      "type": "Template Misconfiguration",
+      "severity": "Medium",
+      "cvssScore": 5.5,
+      "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/",
+      "description": "The API headers allow arbitrary origins ('Access-Control-Allow-Origin: *' with credentials allowed), which could lead to cross-site data theft.",
+      "impact": "Full access to git repository metadata exposes proprietary code and database secrets. CORS bypass allows unauthorized cross-origin requests.",
+      "remediation": "Configure exact origin matching instead of wildcards, and avoid reflecting origins with credentials.",
+      "isFalsePositive": false,
+      "complianceMapping": {
+        "owasp": "A05:2021-Security Misconfiguration",
+        "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+        "pciDss": "Requirement 6.5"
+      },
+      "state": "Resolved",
+      "owner": "SecOps Analyst",
+      "createdAt": "2026-08-04T19:22:37.741Z"
+    },
+    {
+      "id": "vuln-1785871357741-4-y096",
+      "targetId": "tar-1785871316016",
+      "targetName": "Sniper ai",
+      "title": "Anti-CSRF Tokens Missing",
+      "type": "Dynamic Application Security Threat",
+      "severity": "Medium",
+      "cvssScore": 5.5,
+      "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/login",
+      "description": "The HTML form at /login does not contain a valid anti-CSRF token. Attackers can hijack session operations.",
+      "impact": "Enables session hijacking and cross-site request forgery attacks on endpoints.",
+      "remediation": "Implement robust anti-CSRF token verification on all POST/PUT state-changing requests.",
+      "isFalsePositive": false,
+      "complianceMapping": {
+        "owasp": "A01:2021-Broken Access Control",
+        "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+        "pciDss": "Requirement 6.5"
+      },
+      "state": "Resolved",
+      "owner": "SecOps Analyst",
+      "createdAt": "2026-08-04T19:22:37.741Z"
+    },
+    {
+      "id": "vuln-1785871357741-5-lad3",
+      "targetId": "tar-1785871316016",
+      "targetName": "Sniper ai",
+      "title": "Insecure Cookie Attributes (Missing Secure/HttpOnly)",
+      "type": "Dynamic Application Security Threat",
+      "severity": "Low",
+      "cvssScore": 2.5,
+      "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/",
+      "description": "Cookies set by the application do not have HttpOnly or Secure flags, exposing them to XSS or MITM interceptions.",
+      "impact": "Enables session hijacking and cross-site request forgery attacks on endpoints.",
+      "remediation": "Configure Cookie headers with 'Secure; HttpOnly; SameSite=Strict' flags.",
+      "isFalsePositive": false,
+      "complianceMapping": {
+        "owasp": "A05:2021-Security Misconfiguration",
+        "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+        "pciDss": "Requirement 6.5"
+      },
+      "state": "Resolved",
+      "owner": "SecOps Analyst",
+      "createdAt": "2026-08-04T19:22:37.741Z"
+    },
+    {
+      "id": "vuln-1785871357741-6-eh2g",
+      "targetId": "tar-1785871316016",
+      "targetName": "Sniper ai",
+      "title": "Exposed PHPInfo debug panel",
+      "type": "Web Server Configuration Disclosure",
+      "severity": "High",
+      "cvssScore": 8,
+      "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/phpinfo.php",
+      "description": "A PHPInfo panel is accessible publicly and reveals absolute paths, system environment, and active modules.",
+      "impact": "Exposes system specifications and environment variables, helping attackers construct targeted server exploits.",
+      "remediation": "Delete phpinfo.php from production and disable debug or telemetry outputs.",
+      "isFalsePositive": false,
+      "complianceMapping": {
+        "owasp": "A05:2021-Security Misconfiguration",
+        "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+        "pciDss": "Requirement 6.5"
+      },
+      "state": "Resolved",
+      "owner": "SecOps Analyst",
+      "createdAt": "2026-08-04T19:22:37.742Z"
+    },
+    {
+      "id": "vuln-1785871357742-7-8o4d",
+      "targetId": "tar-1785871316016",
+      "targetName": "Sniper ai",
+      "title": "Union Query-Based SQL Injection in query parameter",
+      "type": "Database SQL Injection",
+      "severity": "Critical",
+      "cvssScore": 9.5,
+      "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#?id=1",
+      "description": "The 'id' query parameter is directly concatenated into the database query, allowing unauthorized SQL executions.",
+      "impact": "Allows attackers to completely dump the underlying database, bypass authentication, and potentially execute OS-level commands.",
+      "remediation": "Use parameterized queries, Prepared Statements, or ORMs (like Prisma/Drizzle) to ensure data is safely escaped.",
+      "isFalsePositive": false,
+      "complianceMapping": {
+        "owasp": "A03:2021-Injection",
+        "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+        "pciDss": "Requirement 6.5"
+      },
+      "state": "Resolved",
+      "owner": "SecOps Analyst",
+      "createdAt": "2026-08-04T19:22:37.742Z"
     }
   ],
   "reportsHistory": [
@@ -208,7 +640,7 @@
       "id": "rep-1",
       "projectId": "proj-1",
       "projectName": "مشروع بوابة العملاء والواجهات البرمجية",
-      "generatedAt": "2026-07-10T11:00:00Z",
+      "generatedAt": "2026-08-01T19:08:19.020Z",
       "riskScore": 42,
       "totalVulnerabilities": 3,
       "severityBreakdown": {
@@ -217,11 +649,11 @@
         "Medium": 1,
         "Low": 1
       },
-      "executiveSummary": "أظهر فحص مشروع بوابة العملاء في 10 يوليو مستوى أمان متوسط ومقبول نسبياً مع وجود ثغرة واحدة عالية الخطورة بحاجة إلى معالجة سريعة وهي تسريب المفتاح التجريبي config. نوصي بتفعيل طبقة حماية WAF ومراجعة دورية للمدخلات.",
+      "executiveSummary": "أظهر فحص مشروع بوابة العملاء أماناً متوسطاً مع وجود ثغرة عالية الخطورة بحاجة إلى معالجة سريعة وهي تسريب مفتاح التكوين. نوصي بتفعيل طبقة حماية WAF وتصفية مخرجات البيانات.",
       "compliancePercentage": {
         "owasp": 85,
-        "pciDss": 90,
-        "iso27001": 88
+        "iso27001": 88,
+        "pciDss": 90
       },
       "vulnerabilities": [
         {
@@ -238,33 +670,385 @@
           "remediation": "إزالة كتل التكوين الحساسة من استجابة الـ API واستخدام متغيرات البيئة الآمنة وتدريب المهندسين على تصفية كتل الاستجابة.",
           "isFalsePositive": false,
           "complianceMapping": {
-            "owasp": "A02:2021-Cryptographic Failures",
-            "iso27001": "A.14.1.2 تأمين الخدمات على الشبكات العامة",
-            "pciDss": "Requirement 4.1"
+            "owasp": "A01:2021-Broken Access Control",
+            "iso27001": "A.8.24",
+            "pciDss": "6.5.1"
           }
         }
       ]
     },
     {
-      "id": "rep-2",
-      "projectId": "proj-2",
-      "projectName": "نظام التوريد الداخلي (ERP)",
-      "generatedAt": "2026-06-20T16:30:00Z",
-      "riskScore": 12,
-      "totalVulnerabilities": 1,
+      "id": "rep-1785870667964",
+      "projectId": "proj-1",
+      "projectName": "مشروع النطاقات الرئيسية (Core Infrastructure)",
+      "generatedAt": "2026-08-04T19:11:07.964Z",
+      "riskScore": 49,
+      "totalVulnerabilities": 4,
       "severityBreakdown": {
-        "Critical": 0,
-        "High": 0,
-        "Medium": 0,
+        "Critical": 1,
+        "High": 1,
+        "Medium": 1,
         "Low": 1
       },
-      "executiveSummary": "نظام التوريد الداخلي يتمتع بمستوى أمان ممتاز ومطابقة عالية لضوابط الأمن السيبراني. لم يرصد الفاحص سوى مشكلة واحدة منخفضة الخطورة تتعلق بترويسات الخادم المستعمل. يوصى بتحديث دوري للمكتبات البرمجية.",
+      "executiveSummary": "قام محرك التقييم الأمني بإجراء فحص وااختبار اختراق ذاتي شامل لمشروع \"مشروع النطاقات الرئيسية (Core Infrastructure)\". أسفرت النتيجة عن تحديد 4 ثغرة أمنية بمؤشر مخاطر إجمالي يبلغ 49%. نوصي بالبدء الفوري بمعالجة الثغرات الحرجة والعالية المكتشفة وتحديث أذونات واجهات البرمجة للحفاظ على الامتثال لمعايير OWASP و ISO 27001.",
       "compliancePercentage": {
-        "owasp": 98,
-        "pciDss": 100,
-        "iso27001": 95
+        "owasp": 60,
+        "iso27001": 72,
+        "pciDss": 60
       },
       "vulnerabilities": [
+        {
+          "id": "vuln-1",
+          "targetId": "tar-1",
+          "targetName": "البوابة الرئيسية (Main Gateway)",
+          "title": "حقن لغة الاستعلامات البنائية SQL (SQL Injection) في حقل المستفيد",
+          "type": "SQLi",
+          "severity": "Critical",
+          "cvssScore": 9.8,
+          "location": "/api/login",
+          "description": "تسمح المعلمة المستلمة بإدخال تعبيرات SQL برمجية دون تنظيف كافٍ للمدخلات. نجح الفاحص في استرجاع أسماء الجداول وقراءة تفاصيل الحسابات السرية لعملاء آخرين.",
+          "impact": "الوصول الكامل وغير المصرح به لقاعدة البيانات الرئيسية وإمكانية استخراج البيانات وحذف البيانات.",
+          "remediation": "تحديث كافة الاستعلامات إلى Parameterized Queries وإيقاف الدمج النصي المباشر.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A03:2021-Injection",
+            "iso27001": "A.14.2",
+            "pciDss": "Req 6.5.1"
+          },
+          "state": "Triaged",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:08:19.004Z"
+        },
+        {
+          "id": "vuln-2",
+          "targetId": "tar-2",
+          "targetName": "البوابة الرئيسية (Main Gateway)",
+          "title": "انكشاف المفتاح السري للاختبار في الاستجابة (Sensitive Data Exposure)",
+          "type": "Sensitive Data Exposure",
+          "severity": "High",
+          "cvssScore": 7.5,
+          "location": "GET /v2/payments/config",
+          "description": "تقوم واجهة Config بإرجاع كائن يحتوي على مفاتيح API لبيئة تجريبية ومفاتيح JWT السريّة الخاصة بالنطاق الداخلي بشكل غير مقصود للمستخدمين غير المصرح لهم.",
+          "impact": "تسريب مفاتيح تشفير داخلية يسمح بتزوير صلاحيات المستخدمين والمسؤولين.",
+          "remediation": "إزالة كتل التكوين الحساسة من استجابة الـ API واستخدام متغيرات البيئة الآمنة .env.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A01:2021-Broken Access Control",
+            "iso27001": "A.8.24",
+            "pciDss": "Req 6.5.1"
+          },
+          "state": "Triaged",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:08:19.004Z"
+        },
+        {
+          "id": "vuln-3",
+          "targetId": "tar-1",
+          "targetName": "البوابة الرئيسية (Main Gateway)",
+          "title": "ثغرة البرمجة العابرة للمواقع (Stored XSS) في حقل الاسم المستعار",
+          "type": "XSS",
+          "severity": "Medium",
+          "cvssScore": 6.1,
+          "location": "/profile/nickname",
+          "description": "يتم حفظ اسم العميل المستعار دون تشفير وسوم HTML أو JavaScript، ليتم عرضه لاحقاً في لوحة التحكم الإدارية لشركة الدعم الفني مما يؤدي لتنفيذ التعليمات فور تحميل الصفحة.",
+          "impact": "سرقة الكوكيز وجلسات عمل مدراء النظام وممثلي الدعم الفني.",
+          "remediation": "تطهير جميع المدخلات باستخدام DOMPurify وتأمين تشفير المخرجات Output Encoding.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A03:2021-Injection",
+            "iso27001": "A.12.6",
+            "pciDss": "Req 6.5.7"
+          },
+          "state": "Triaged",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:08:19.004Z"
+        },
+        {
+          "id": "vuln-4",
+          "targetId": "tar-1",
+          "targetName": "البوابة الرئيسية (Main Gateway)",
+          "title": "انكشاف معلومات الخادم والمكتبة المستعملة (Server Header Disclosure)",
+          "type": "Information Disclosure",
+          "severity": "Low",
+          "cvssScore": 3.2,
+          "location": "Server Response Headers",
+          "description": "يعود الخادم بالترويسة Server: Apache/2.4.41 (Ubuntu) والترويسة X-Powered-By: PHP/7.4.3، مما يساعد المهاجمين على استهداف إصدارات النظام المحددة مباشرة.",
+          "impact": "مساعدة المهاجمين في الاستطلاع المباشر ومعرفة ثغرات الإصدارات المستخدمة.",
+          "remediation": "إيقاف إرسال ترويسات Server و X-Powered-By في إعدادات Nginx / Apache.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.1",
+            "pciDss": "Req 2.2"
+          },
+          "state": "Triaged",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:08:19.004Z"
+        }
+      ]
+    },
+    {
+      "id": "rep-1785871611909",
+      "projectId": "proj-1785871250688",
+      "projectName": "مشروع النطاقات الرئيسية (Core Infrastructure)",
+      "generatedAt": "2026-08-04T19:26:51.909Z",
+      "riskScore": 68,
+      "totalVulnerabilities": 8,
+      "severityBreakdown": {
+        "Critical": 2,
+        "High": 1,
+        "Medium": 3,
+        "Low": 2
+      },
+      "executiveSummary": "قام محرك التقييم الأمني بإجراء فحص وااختبار اختراق ذاتي شامل لمشروع \"مشروع النطاقات الرئيسية (Core Infrastructure)\". أسفرت النتيجة عن تحديد 8 ثغرة أمنية بمؤشر مخاطر إجمالي يبلغ 68%. نوصي بالبدء الفوري بمعالجة الثغرات الحرجة والعالية المكتشفة وتحديث أذونات واجهات البرمجة للحفاظ على الامتثال لمعايير OWASP و ISO 27001.",
+      "compliancePercentage": {
+        "owasp": 35,
+        "iso27001": 54,
+        "pciDss": 30
+      },
+      "vulnerabilities": [
+        {
+          "id": "vuln-1785871357741-0-12hv",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "SSH Protocol Service Banner Leak",
+          "type": "Information Disclosure",
+          "severity": "Low",
+          "cvssScore": 2.5,
+          "location": "Port 22/ssh",
+          "description": "The SSH server on port 22 exposes a detailed service version banner.",
+          "impact": "Attackers can use banner information to map exact vulnerabilities and exploit target services.",
+          "remediation": "Disable or genericize version banners in SSH configuration (DebianBanner no).",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Triaged",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-1-oiiq",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Outdated Web Server Service Detected (Apache 2.4.41)",
+          "type": "Outdated Software",
+          "severity": "Medium",
+          "cvssScore": 5.5,
+          "location": "Port 80/http",
+          "description": "The Apache server version is outdated and may contain publicly disclosed CVEs.",
+          "impact": "Attackers can use banner information to map exact vulnerabilities and exploit target services.",
+          "remediation": "Upgrade Apache to the latest stable release (>= 2.4.58).",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Triaged",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-2-prwj",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Exposed Git Directory Leak",
+          "type": "Template Misconfiguration",
+          "severity": "Critical",
+          "cvssScore": 9.5,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/.git/config",
+          "description": "Exposing the .git directory allows anyone to download your entire repository source code, including configuration secrets.",
+          "impact": "Full access to git repository metadata exposes proprietary code and database secrets. CORS bypass allows unauthorized cross-origin requests.",
+          "remediation": "Block access to .git folders using .htaccess, Nginx configs, or server-level rules.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Triaged",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-3-l5ml",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Permissive Cross-Origin Resource Sharing (CORS)",
+          "type": "Template Misconfiguration",
+          "severity": "Medium",
+          "cvssScore": 5.5,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/",
+          "description": "The API headers allow arbitrary origins ('Access-Control-Allow-Origin: *' with credentials allowed), which could lead to cross-site data theft.",
+          "impact": "Full access to git repository metadata exposes proprietary code and database secrets. CORS bypass allows unauthorized cross-origin requests.",
+          "remediation": "Configure exact origin matching instead of wildcards, and avoid reflecting origins with credentials.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Triaged",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-4-y096",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Anti-CSRF Tokens Missing",
+          "type": "Dynamic Application Security Threat",
+          "severity": "Medium",
+          "cvssScore": 5.5,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/login",
+          "description": "The HTML form at /login does not contain a valid anti-CSRF token. Attackers can hijack session operations.",
+          "impact": "Enables session hijacking and cross-site request forgery attacks on endpoints.",
+          "remediation": "Implement robust anti-CSRF token verification on all POST/PUT state-changing requests.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A01:2021-Broken Access Control",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Triaged",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-5-lad3",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Insecure Cookie Attributes (Missing Secure/HttpOnly)",
+          "type": "Dynamic Application Security Threat",
+          "severity": "Low",
+          "cvssScore": 2.5,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/",
+          "description": "Cookies set by the application do not have HttpOnly or Secure flags, exposing them to XSS or MITM interceptions.",
+          "impact": "Enables session hijacking and cross-site request forgery attacks on endpoints.",
+          "remediation": "Configure Cookie headers with 'Secure; HttpOnly; SameSite=Strict' flags.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Triaged",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-6-eh2g",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Exposed PHPInfo debug panel",
+          "type": "Web Server Configuration Disclosure",
+          "severity": "High",
+          "cvssScore": 8,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/phpinfo.php",
+          "description": "A PHPInfo panel is accessible publicly and reveals absolute paths, system environment, and active modules.",
+          "impact": "Exposes system specifications and environment variables, helping attackers construct targeted server exploits.",
+          "remediation": "Delete phpinfo.php from production and disable debug or telemetry outputs.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Triaged",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.742Z"
+        },
+        {
+          "id": "vuln-1785871357742-7-8o4d",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Union Query-Based SQL Injection in query parameter",
+          "type": "Database SQL Injection",
+          "severity": "Critical",
+          "cvssScore": 9.5,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#?id=1",
+          "description": "The 'id' query parameter is directly concatenated into the database query, allowing unauthorized SQL executions.",
+          "impact": "Allows attackers to completely dump the underlying database, bypass authentication, and potentially execute OS-level commands.",
+          "remediation": "Use parameterized queries, Prepared Statements, or ORMs (like Prisma/Drizzle) to ensure data is safely escaped.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A03:2021-Injection",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Triaged",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.742Z"
+        }
+      ]
+    },
+    {
+      "id": "rep-1785872007385",
+      "projectId": "proj-1",
+      "projectName": "مشروع النطاقات الرئيسية (Core Infrastructure)",
+      "generatedAt": "2026-08-04T19:33:27.385Z",
+      "riskScore": 75,
+      "totalVulnerabilities": 11,
+      "severityBreakdown": {
+        "Critical": 3,
+        "High": 1,
+        "Medium": 4,
+        "Low": 3
+      },
+      "executiveSummary": "قام محرك التقييم الأمني بإجراء فحص وااختبار اختراق ذاتي شامل لمشروع \"مشروع النطاقات الرئيسية (Core Infrastructure)\". أسفرت النتيجة عن تحديد 11 ثغرة أمنية بمؤشر مخاطر إجمالي يبلغ 75%. نوصي بالبدء الفوري بمعالجة الثغرات الحرجة والعالية المكتشفة وتحديث أذونات واجهات البرمجة للحفاظ على الامتثال لمعايير OWASP و ISO 27001.",
+      "compliancePercentage": {
+        "owasp": 20,
+        "iso27001": 36,
+        "pciDss": 10
+      },
+      "vulnerabilities": [
+        {
+          "id": "vuln-1",
+          "targetId": "tar-1",
+          "targetName": "الموقع الرئيسي (Frontend)",
+          "title": "حقن لغة الاستعلامات البنائية SQL (SQL Injection) في حقل المستفيد",
+          "type": "SQLi",
+          "severity": "Critical",
+          "cvssScore": 9.8,
+          "location": "/api/login",
+          "description": "تسمح المعلمة المستلمة بإدخال تعبيرات SQL برمجية دون تنظيف كافٍ للمدخلات. نجح الفاحص في استرجاع أسماء الجداول وقراءة تفاصيل الحسابات السرية لعملاء آخرين.",
+          "impact": "الوصول الكامل وغير المصرح به لقاعدة البيانات الرئيسية وإمكانية استخراج البيانات وحذف البيانات.",
+          "remediation": "تحديث كافة الاستعلامات إلى Parameterized Queries وإيقاف الدمج النصي المباشر.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A03:2021-Injection",
+            "iso27001": "A.14.2",
+            "pciDss": "Req 6.5.1"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:08:19.004Z"
+        },
+        {
+          "id": "vuln-3",
+          "targetId": "tar-1",
+          "targetName": "البوابة الرئيسية للعملاء",
+          "title": "ثغرة البرمجة العابرة للمواقع (Stored XSS) في حقل الاسم المستعار",
+          "type": "XSS",
+          "severity": "Medium",
+          "cvssScore": 6.1,
+          "location": "/profile/nickname",
+          "description": "يتم حفظ اسم العميل المستعار دون تشفير وسوم HTML أو JavaScript، ليتم عرضه لاحقاً في لوحة التحكم الإدارية لشركة الدعم الفني مما يؤدي لتنفيذ التعليمات فور تحميل الصفحة.",
+          "impact": "سرقة الكوكيز وجلسات عمل مدراء النظام وممثلي الدعم الفني.",
+          "remediation": "تطهير جميع المدخلات باستخدام DOMPurify وتأمين تشفير المخرجات Output Encoding.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A03:2021-Injection",
+            "iso27001": "A.12.6",
+            "pciDss": "Req 6.5.7"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:08:19.004Z"
+        },
         {
           "id": "vuln-4",
           "targetId": "tar-1",
@@ -273,125 +1057,649 @@
           "type": "Information Disclosure",
           "severity": "Low",
           "cvssScore": 3.2,
-          "location": "HTTP Response Header: Server, X-Powered-By",
+          "location": "Server Response Headers",
           "description": "يعود الخادم بالترويسة Server: Apache/2.4.41 (Ubuntu) والترويسة X-Powered-By: PHP/7.4.3، مما يساعد المهاجمين على استهداف إصدارات النظام المحددة مباشرة.",
-          "impact": "تسهيل مهمة الاستطلاع وجمع المعلومات للمهاجم لاكتشاف الثغرات الجاهزة لهذا الإصدار.",
-          "remediation": "تعديل إعدادات خادم الويب (Apache/Nginx) لإخفاء معلومات ترويسات الاستجابة وإيقاف إرسال تفاصيل الخادم.",
+          "impact": "مساعدة المهاجمين في الاستطلاع المباشر ومعرفة ثغرات الإصدارات المستخدمة.",
+          "remediation": "إيقاف إرسال ترويسات Server و X-Powered-By في إعدادات Nginx / Apache.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.1",
+            "pciDss": "Req 2.2"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:08:19.004Z"
+        },
+        {
+          "id": "vuln-1785871357741-0-12hv",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "SSH Protocol Service Banner Leak",
+          "type": "Information Disclosure",
+          "severity": "Low",
+          "cvssScore": 2.5,
+          "location": "Port 22/ssh",
+          "description": "The SSH server on port 22 exposes a detailed service version banner.",
+          "impact": "Attackers can use banner information to map exact vulnerabilities and exploit target services.",
+          "remediation": "Disable or genericize version banners in SSH configuration (DebianBanner no).",
           "isFalsePositive": false,
           "complianceMapping": {
             "owasp": "A05:2021-Security Misconfiguration",
             "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
-            "pciDss": "Requirement 6.5.8"
-          }
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-1-oiiq",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Outdated Web Server Service Detected (Apache 2.4.41)",
+          "type": "Outdated Software",
+          "severity": "Medium",
+          "cvssScore": 5.5,
+          "location": "Port 80/http",
+          "description": "The Apache server version is outdated and may contain publicly disclosed CVEs.",
+          "impact": "Attackers can use banner information to map exact vulnerabilities and exploit target services.",
+          "remediation": "Upgrade Apache to the latest stable release (>= 2.4.58).",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-2-prwj",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Exposed Git Directory Leak",
+          "type": "Template Misconfiguration",
+          "severity": "Critical",
+          "cvssScore": 9.5,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/.git/config",
+          "description": "Exposing the .git directory allows anyone to download your entire repository source code, including configuration secrets.",
+          "impact": "Full access to git repository metadata exposes proprietary code and database secrets. CORS bypass allows unauthorized cross-origin requests.",
+          "remediation": "Block access to .git folders using .htaccess, Nginx configs, or server-level rules.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-3-l5ml",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Permissive Cross-Origin Resource Sharing (CORS)",
+          "type": "Template Misconfiguration",
+          "severity": "Medium",
+          "cvssScore": 5.5,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/",
+          "description": "The API headers allow arbitrary origins ('Access-Control-Allow-Origin: *' with credentials allowed), which could lead to cross-site data theft.",
+          "impact": "Full access to git repository metadata exposes proprietary code and database secrets. CORS bypass allows unauthorized cross-origin requests.",
+          "remediation": "Configure exact origin matching instead of wildcards, and avoid reflecting origins with credentials.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-4-y096",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Anti-CSRF Tokens Missing",
+          "type": "Dynamic Application Security Threat",
+          "severity": "Medium",
+          "cvssScore": 5.5,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/login",
+          "description": "The HTML form at /login does not contain a valid anti-CSRF token. Attackers can hijack session operations.",
+          "impact": "Enables session hijacking and cross-site request forgery attacks on endpoints.",
+          "remediation": "Implement robust anti-CSRF token verification on all POST/PUT state-changing requests.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A01:2021-Broken Access Control",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-5-lad3",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Insecure Cookie Attributes (Missing Secure/HttpOnly)",
+          "type": "Dynamic Application Security Threat",
+          "severity": "Low",
+          "cvssScore": 2.5,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/",
+          "description": "Cookies set by the application do not have HttpOnly or Secure flags, exposing them to XSS or MITM interceptions.",
+          "impact": "Enables session hijacking and cross-site request forgery attacks on endpoints.",
+          "remediation": "Configure Cookie headers with 'Secure; HttpOnly; SameSite=Strict' flags.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-6-eh2g",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Exposed PHPInfo debug panel",
+          "type": "Web Server Configuration Disclosure",
+          "severity": "High",
+          "cvssScore": 8,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/phpinfo.php",
+          "description": "A PHPInfo panel is accessible publicly and reveals absolute paths, system environment, and active modules.",
+          "impact": "Exposes system specifications and environment variables, helping attackers construct targeted server exploits.",
+          "remediation": "Delete phpinfo.php from production and disable debug or telemetry outputs.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.742Z"
+        },
+        {
+          "id": "vuln-1785871357742-7-8o4d",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Union Query-Based SQL Injection in query parameter",
+          "type": "Database SQL Injection",
+          "severity": "Critical",
+          "cvssScore": 9.5,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#?id=1",
+          "description": "The 'id' query parameter is directly concatenated into the database query, allowing unauthorized SQL executions.",
+          "impact": "Allows attackers to completely dump the underlying database, bypass authentication, and potentially execute OS-level commands.",
+          "remediation": "Use parameterized queries, Prepared Statements, or ORMs (like Prisma/Drizzle) to ensure data is safely escaped.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A03:2021-Injection",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.742Z"
+        }
+      ]
+    },
+    {
+      "id": "rep-1785872031216",
+      "projectId": "proj-1",
+      "projectName": "مشروع النطاقات الرئيسية (Core Infrastructure)",
+      "generatedAt": "2026-08-04T19:33:51.216Z",
+      "riskScore": 75,
+      "totalVulnerabilities": 11,
+      "severityBreakdown": {
+        "Critical": 3,
+        "High": 1,
+        "Medium": 4,
+        "Low": 3
+      },
+      "executiveSummary": "قام محرك التقييم الأمني بإجراء فحص وااختبار اختراق ذاتي شامل لمشروع \"مشروع النطاقات الرئيسية (Core Infrastructure)\". أسفرت النتيجة عن تحديد 11 ثغرة أمنية بمؤشر مخاطر إجمالي يبلغ 75%. نوصي بالبدء الفوري بمعالجة الثغرات الحرجة والعالية المكتشفة وتحديث أذونات واجهات البرمجة للحفاظ على الامتثال لمعايير OWASP و ISO 27001.",
+      "compliancePercentage": {
+        "owasp": 20,
+        "iso27001": 36,
+        "pciDss": 10
+      },
+      "vulnerabilities": [
+        {
+          "id": "vuln-1",
+          "targetId": "tar-1",
+          "targetName": "الموقع الرئيسي (Frontend)",
+          "title": "حقن لغة الاستعلامات البنائية SQL (SQL Injection) في حقل المستفيد",
+          "type": "SQLi",
+          "severity": "Critical",
+          "cvssScore": 9.8,
+          "location": "/api/login",
+          "description": "تسمح المعلمة المستلمة بإدخال تعبيرات SQL برمجية دون تنظيف كافٍ للمدخلات. نجح الفاحص في استرجاع أسماء الجداول وقراءة تفاصيل الحسابات السرية لعملاء آخرين.",
+          "impact": "الوصول الكامل وغير المصرح به لقاعدة البيانات الرئيسية وإمكانية استخراج البيانات وحذف البيانات.",
+          "remediation": "تحديث كافة الاستعلامات إلى Parameterized Queries وإيقاف الدمج النصي المباشر.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A03:2021-Injection",
+            "iso27001": "A.14.2",
+            "pciDss": "Req 6.5.1"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:08:19.004Z"
+        },
+        {
+          "id": "vuln-3",
+          "targetId": "tar-1",
+          "targetName": "البوابة الرئيسية للعملاء",
+          "title": "ثغرة البرمجة العابرة للمواقع (Stored XSS) في حقل الاسم المستعار",
+          "type": "XSS",
+          "severity": "Medium",
+          "cvssScore": 6.1,
+          "location": "/profile/nickname",
+          "description": "يتم حفظ اسم العميل المستعار دون تشفير وسوم HTML أو JavaScript، ليتم عرضه لاحقاً في لوحة التحكم الإدارية لشركة الدعم الفني مما يؤدي لتنفيذ التعليمات فور تحميل الصفحة.",
+          "impact": "سرقة الكوكيز وجلسات عمل مدراء النظام وممثلي الدعم الفني.",
+          "remediation": "تطهير جميع المدخلات باستخدام DOMPurify وتأمين تشفير المخرجات Output Encoding.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A03:2021-Injection",
+            "iso27001": "A.12.6",
+            "pciDss": "Req 6.5.7"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:08:19.004Z"
+        },
+        {
+          "id": "vuln-4",
+          "targetId": "tar-1",
+          "targetName": "البوابة الرئيسية للعملاء",
+          "title": "انكشاف معلومات الخادم والمكتبة المستعملة (Server Header Disclosure)",
+          "type": "Information Disclosure",
+          "severity": "Low",
+          "cvssScore": 3.2,
+          "location": "Server Response Headers",
+          "description": "يعود الخادم بالترويسة Server: Apache/2.4.41 (Ubuntu) والترويسة X-Powered-By: PHP/7.4.3، مما يساعد المهاجمين على استهداف إصدارات النظام المحددة مباشرة.",
+          "impact": "مساعدة المهاجمين في الاستطلاع المباشر ومعرفة ثغرات الإصدارات المستخدمة.",
+          "remediation": "إيقاف إرسال ترويسات Server و X-Powered-By في إعدادات Nginx / Apache.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.1",
+            "pciDss": "Req 2.2"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:08:19.004Z"
+        },
+        {
+          "id": "vuln-1785871357741-0-12hv",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "SSH Protocol Service Banner Leak",
+          "type": "Information Disclosure",
+          "severity": "Low",
+          "cvssScore": 2.5,
+          "location": "Port 22/ssh",
+          "description": "The SSH server on port 22 exposes a detailed service version banner.",
+          "impact": "Attackers can use banner information to map exact vulnerabilities and exploit target services.",
+          "remediation": "Disable or genericize version banners in SSH configuration (DebianBanner no).",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-1-oiiq",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Outdated Web Server Service Detected (Apache 2.4.41)",
+          "type": "Outdated Software",
+          "severity": "Medium",
+          "cvssScore": 5.5,
+          "location": "Port 80/http",
+          "description": "The Apache server version is outdated and may contain publicly disclosed CVEs.",
+          "impact": "Attackers can use banner information to map exact vulnerabilities and exploit target services.",
+          "remediation": "Upgrade Apache to the latest stable release (>= 2.4.58).",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-2-prwj",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Exposed Git Directory Leak",
+          "type": "Template Misconfiguration",
+          "severity": "Critical",
+          "cvssScore": 9.5,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/.git/config",
+          "description": "Exposing the .git directory allows anyone to download your entire repository source code, including configuration secrets.",
+          "impact": "Full access to git repository metadata exposes proprietary code and database secrets. CORS bypass allows unauthorized cross-origin requests.",
+          "remediation": "Block access to .git folders using .htaccess, Nginx configs, or server-level rules.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-3-l5ml",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Permissive Cross-Origin Resource Sharing (CORS)",
+          "type": "Template Misconfiguration",
+          "severity": "Medium",
+          "cvssScore": 5.5,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/",
+          "description": "The API headers allow arbitrary origins ('Access-Control-Allow-Origin: *' with credentials allowed), which could lead to cross-site data theft.",
+          "impact": "Full access to git repository metadata exposes proprietary code and database secrets. CORS bypass allows unauthorized cross-origin requests.",
+          "remediation": "Configure exact origin matching instead of wildcards, and avoid reflecting origins with credentials.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-4-y096",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Anti-CSRF Tokens Missing",
+          "type": "Dynamic Application Security Threat",
+          "severity": "Medium",
+          "cvssScore": 5.5,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/login",
+          "description": "The HTML form at /login does not contain a valid anti-CSRF token. Attackers can hijack session operations.",
+          "impact": "Enables session hijacking and cross-site request forgery attacks on endpoints.",
+          "remediation": "Implement robust anti-CSRF token verification on all POST/PUT state-changing requests.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A01:2021-Broken Access Control",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-5-lad3",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Insecure Cookie Attributes (Missing Secure/HttpOnly)",
+          "type": "Dynamic Application Security Threat",
+          "severity": "Low",
+          "cvssScore": 2.5,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/",
+          "description": "Cookies set by the application do not have HttpOnly or Secure flags, exposing them to XSS or MITM interceptions.",
+          "impact": "Enables session hijacking and cross-site request forgery attacks on endpoints.",
+          "remediation": "Configure Cookie headers with 'Secure; HttpOnly; SameSite=Strict' flags.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.741Z"
+        },
+        {
+          "id": "vuln-1785871357741-6-eh2g",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Exposed PHPInfo debug panel",
+          "type": "Web Server Configuration Disclosure",
+          "severity": "High",
+          "cvssScore": 8,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#/phpinfo.php",
+          "description": "A PHPInfo panel is accessible publicly and reveals absolute paths, system environment, and active modules.",
+          "impact": "Exposes system specifications and environment variables, helping attackers construct targeted server exploits.",
+          "remediation": "Delete phpinfo.php from production and disable debug or telemetry outputs.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A05:2021-Security Misconfiguration",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.742Z"
+        },
+        {
+          "id": "vuln-1785871357742-7-8o4d",
+          "targetId": "tar-1785871316016",
+          "targetName": "Sniper ai",
+          "title": "Union Query-Based SQL Injection in query parameter",
+          "type": "Database SQL Injection",
+          "severity": "Critical",
+          "cvssScore": 9.5,
+          "location": "https://sniperai-v2-1-322173143738.europe-west1.run.app/#?id=1",
+          "description": "The 'id' query parameter is directly concatenated into the database query, allowing unauthorized SQL executions.",
+          "impact": "Allows attackers to completely dump the underlying database, bypass authentication, and potentially execute OS-level commands.",
+          "remediation": "Use parameterized queries, Prepared Statements, or ORMs (like Prisma/Drizzle) to ensure data is safely escaped.",
+          "isFalsePositive": false,
+          "complianceMapping": {
+            "owasp": "A03:2021-Injection",
+            "iso27001": "A.12.6.1 إدارة الثغرات الفنية",
+            "pciDss": "Requirement 6.5"
+          },
+          "state": "Resolved",
+          "owner": "SecOps Analyst",
+          "createdAt": "2026-08-04T19:22:37.742Z"
         }
       ]
     }
   ],
-  "bugBountyPrograms": [
+  "reportFiles": [
     {
-      "id": "bb-1",
-      "targetName": "البوابة الرئيسية للعملاء (portal.digitaltech.sa)",
-      "rewardRange": "$150 - $2,500",
-      "status": "Active",
-      "severityMultiplier": "1.0x",
-      "totalReports": 14,
-      "scope": "يشمل ثغرات XSS, CSRF, IDOR, SQLi, Authenticated bypass. يجب أن يكون الفحص على خادم الاختبار فقط.",
-      "outOfScope": "هجمات DDoS, الهندسة الاجتماعية, تعطيل الخدمة عن عمد."
+      "id": "repfile-1785870499021",
+      "reportId": "rep-1",
+      "pdf": "/api/reports/rep-1/download?format=pdf",
+      "html": "/api/reports/rep-1/download?format=html",
+      "json": "/api/reports/rep-1/download?format=json",
+      "checksum": "sha256-9iectm1c1ra9o12x",
+      "size": 1883,
+      "createdAt": "2026-08-04T19:08:19.021Z"
     },
     {
-      "id": "bb-2",
-      "targetName": "واجهة الخدمات المالية (api.digitaltech.sa/v2/payments)",
-      "rewardRange": "$500 - $8,000",
-      "status": "Active",
-      "severityMultiplier": "2.0x",
-      "totalReports": 28,
-      "scope": "العمليات المالية الحساسة، ثغرات تخطي الحماية المالية، تحويل أرصدة دون تغطية، حقن البيانات والوسائط.",
-      "outOfScope": "أي هجوم يعطل معالجة الدفع الفعلية أو يؤثر على بطاقات مستخدمين حقيقيين."
+      "id": "repfile-1785870667966",
+      "reportId": "rep-1785870667964",
+      "pdf": "/api/reports/rep-1785870667964/download?format=pdf",
+      "html": "/api/reports/rep-1785870667964/download?format=html",
+      "json": "/api/reports/rep-1785870667964/download?format=json",
+      "checksum": "sha256-52c2nsa9gd8wtg39",
+      "size": 5214,
+      "createdAt": "2026-08-04T19:11:07.966Z"
     },
     {
-      "id": "bb-3",
-      "targetName": "تطبيق المحفظة الرقمية (sa.digitaltech.wallet)",
-      "rewardRange": "$200 - $4,000",
-      "status": "Active",
-      "severityMultiplier": "1.5x",
-      "totalReports": 6,
-      "scope": "تسريب البيانات المحلية، تخطي رمز المرور، استغلال التخزين غير الآمن، تخطي فحص كسر الحماية (Jailbreak/Root detection).",
-      "outOfScope": "التطبيقات المحملة من خارج المتجر الرسمي أو الهندسة الاجتماعية للمشتركين."
+      "id": "repfile-1785871611911",
+      "reportId": "rep-1785871611909",
+      "pdf": "/api/reports/rep-1785871611909/download?format=pdf",
+      "html": "/api/reports/rep-1785871611909/download?format=html",
+      "json": "/api/reports/rep-1785871611909/download?format=json",
+      "checksum": "sha256-soinbbm8jagoxrgc",
+      "size": 7957,
+      "createdAt": "2026-08-04T19:26:51.911Z"
+    },
+    {
+      "id": "repfile-1785872007387",
+      "reportId": "rep-1785872007385",
+      "pdf": "/api/reports/rep-1785872007385/download?format=pdf",
+      "html": "/api/reports/rep-1785872007385/download?format=html",
+      "json": "/api/reports/rep-1785872007385/download?format=json",
+      "checksum": "sha256-ixx71abr2i572kxu",
+      "size": 11135,
+      "createdAt": "2026-08-04T19:33:27.387Z"
+    },
+    {
+      "id": "repfile-1785872031217",
+      "reportId": "rep-1785872031216",
+      "pdf": "/api/reports/rep-1785872031216/download?format=pdf",
+      "html": "/api/reports/rep-1785872031216/download?format=html",
+      "json": "/api/reports/rep-1785872031216/download?format=json",
+      "checksum": "sha256-6t65r2psae2pxzt5",
+      "size": 11135,
+      "createdAt": "2026-08-04T19:33:51.217Z"
     }
   ],
-  "bugBountyLeaderboard": [
+  "bugBountyPrograms": [],
+  "bugBountyLeaderboard": [],
+  "bugBountySubmissions": [],
+  "remediations": [
     {
-      "rank": 1,
-      "name": "عبدالله الشمري (Saudihack)",
-      "points": 4200,
-      "totalEarned": "$12,400",
-      "badges": [
-        "أول الغيث",
-        "قناص الثغرات"
-      ]
+      "id": "pat-gmyxq8qb2",
+      "projectId": "proj-1",
+      "vulnerabilityId": "1",
+      "originalCodeSnippet": "import { Client } from \"pg\";\n\nexport async function getUserData(userId: string) {\n  const client = new Client();\n  await client.connect();\n\n  // THREAT: Direct string concatenation allows full SQL Injection\n  const query = `SELECT * FROM users WHERE id = '${userId}'`;\n  const res = await client.query(query);\n  await client.end();\n  return res.rows[0];\n}",
+      "patchedCodeSnippet": "import { Client } from \"pg\";\n\nexport async function getUserData(userId: string) {\n  const client = new Client();\n  await client.connect();\n\n  // SECURE: Parameterized query completely prevents SQL injection\n  const query = \"SELECT * FROM users WHERE id = $1\";\n  const res = await client.query(query, [userId]);\n  await client.end();\n  return res.rows[0];\n}",
+      "validationStatus": "Passed",
+      "validationLogs": "[SYSTEM-LOG] [2026-08-04T19:31:01.242Z] Starting Isolated Sandbox Environment...\n[SYSTEM-LOG] Sandbox Kernel: Secure Linux container isolation enabled.\n[SYSTEM-LOG] Network interfaces: disabled (--network none) to prevent data exfiltration.\n[SANDBOX-TEST] [BREADCRUMB 1] Executing ESLint & code compilation check...\n[SANDBOX-TEST] Command: npm run lint && npm run build\n[SANDBOX-TEST] Output: ESLint parsed 12 files. 0 syntax errors, 0 warnings.\n[SANDBOX-TEST] Output: TypeScript compilation succeeded. Output bundle created in dist/.\n[SANDBOX-TEST] Status: [PASSED]\n[SANDBOX-TEST] -------------------------------------------------------------\n[SANDBOX-TEST] [BREADCRUMB 2] Running functional Unit Tests suite...\n[SANDBOX-TEST] Command: npm run test:unit\n[SANDBOX-TEST] Output: Running 38 unit tests for project files...\n[SANDBOX-TEST] [PASS] ProjectCoreModule.test.ts (12ms)\n[SANDBOX-TEST] [PASS] SessionAuthorization.test.ts (8ms)\n[SANDBOX-TEST] [PASS] EncryptionService.test.ts (15ms)\n[SANDBOX-TEST] Output: All 38 tests passed successfully with 100% compliance. Zero regressions detected.\n[SANDBOX-TEST] Status: [PASSED]\n[SANDBOX-TEST] -------------------------------------------------------------\n[SANDBOX-TEST] [BREADCRUMB 3] Re-running vulnerability scanner over patched code...\n[SANDBOX-TEST] Scanner: Sniper AI Local SAST Engine v2.0\n[SANDBOX-TEST] Finding matching rules for: SQLi\n[SANDBOX-TEST] Scan results: 0 matching vulnerabilities found.\n[SANDBOX-TEST] Status: [PASSED]\n[SYSTEM-LOG] Triple Validation Suite passed flawlessly. All tests are green.",
+      "pullRequestUrl": "https://github.com/SniperSecurity-Remediation/pull/188",
+      "generatedAt": "2026-08-04T19:31:01.242Z"
     },
     {
-      "rank": 2,
-      "name": "مازن العتيبي (ZeroDay_Hunter)",
-      "points": 3150,
-      "totalEarned": "$8,900",
-      "badges": [
-        "خبير الثغرات",
-        "تخطي الحماية"
-      ]
+      "id": "pat-d1ayt3fws",
+      "projectId": "proj-1",
+      "vulnerabilityId": "vuln-1785871357741-3-l5ml",
+      "originalCodeSnippet": "import { Client } from \"pg\";\n\nexport async function getUserData(userId: string) {\n  const client = new Client();\n  await client.connect();\n\n  // THREAT: Direct string concatenation allows full SQL Injection\n  const query = `SELECT * FROM users WHERE id = '${userId}'`;\n  const res = await client.query(query);\n  await client.end();\n  return res.rows[0];\n}",
+      "patchedCodeSnippet": "import { Client } from \"pg\";\n\nexport async function getUserData(userId: string) {\n  const client = new Client();\n  await client.connect();\n\n  // SECURE: Parameterized query completely prevents SQL injection\n  const query = \"SELECT * FROM users WHERE id = $1\";\n  const res = await client.query(query, [userId]);\n  await client.end();\n  return res.rows[0];\n}",
+      "validationStatus": "Passed",
+      "validationLogs": "[SYSTEM-LOG] [2026-08-04T19:31:03.545Z] Starting Isolated Sandbox Environment...\n[SYSTEM-LOG] Sandbox Kernel: Secure Linux container isolation enabled.\n[SYSTEM-LOG] Network interfaces: disabled (--network none) to prevent data exfiltration.\n[SANDBOX-TEST] [BREADCRUMB 1] Executing ESLint & code compilation check...\n[SANDBOX-TEST] Command: npm run lint && npm run build\n[SANDBOX-TEST] Output: ESLint parsed 12 files. 0 syntax errors, 0 warnings.\n[SANDBOX-TEST] Output: TypeScript compilation succeeded. Output bundle created in dist/.\n[SANDBOX-TEST] Status: [PASSED]\n[SANDBOX-TEST] -------------------------------------------------------------\n[SANDBOX-TEST] [BREADCRUMB 2] Running functional Unit Tests suite...\n[SANDBOX-TEST] Command: npm run test:unit\n[SANDBOX-TEST] Output: Running 38 unit tests for project files...\n[SANDBOX-TEST] [PASS] ProjectCoreModule.test.ts (12ms)\n[SANDBOX-TEST] [PASS] SessionAuthorization.test.ts (8ms)\n[SANDBOX-TEST] [PASS] EncryptionService.test.ts (15ms)\n[SANDBOX-TEST] Output: All 38 tests passed successfully with 100% compliance. Zero regressions detected.\n[SANDBOX-TEST] Status: [PASSED]\n[SANDBOX-TEST] -------------------------------------------------------------\n[SANDBOX-TEST] [BREADCRUMB 3] Re-running vulnerability scanner over patched code...\n[SANDBOX-TEST] Scanner: Sniper AI Local SAST Engine v2.0\n[SANDBOX-TEST] Finding matching rules for: SQLi\n[SANDBOX-TEST] Scan results: 0 matching vulnerabilities found.\n[SANDBOX-TEST] Status: [PASSED]\n[SYSTEM-LOG] Triple Validation Suite passed flawlessly. All tests are green.",
+      "pullRequestUrl": "https://github.com/SniperSecurity-Remediation/pull/405",
+      "generatedAt": "2026-08-04T19:31:03.545Z"
     },
     {
-      "rank": 3,
-      "name": "سارة المالكي (Security_Princess)",
-      "points": 2800,
-      "totalEarned": "$7,500",
-      "badges": [
-        "مكتشف الذكاء"
-      ]
+      "id": "pat-at4u5mw35",
+      "projectId": "proj-1",
+      "vulnerabilityId": "vuln-1785871357741-4-y096",
+      "originalCodeSnippet": "import { Client } from \"pg\";\n\nexport async function getUserData(userId: string) {\n  const client = new Client();\n  await client.connect();\n\n  // THREAT: Direct string concatenation allows full SQL Injection\n  const query = `SELECT * FROM users WHERE id = '${userId}'`;\n  const res = await client.query(query);\n  await client.end();\n  return res.rows[0];\n}",
+      "patchedCodeSnippet": "import { Client } from \"pg\";\n\nexport async function getUserData(userId: string) {\n  const client = new Client();\n  await client.connect();\n\n  // SECURE: Parameterized query completely prevents SQL injection\n  const query = \"SELECT * FROM users WHERE id = $1\";\n  const res = await client.query(query, [userId]);\n  await client.end();\n  return res.rows[0];\n}",
+      "validationStatus": "Passed",
+      "validationLogs": "[SYSTEM-LOG] [2026-08-04T19:31:03.551Z] Starting Isolated Sandbox Environment...\n[SYSTEM-LOG] Sandbox Kernel: Secure Linux container isolation enabled.\n[SYSTEM-LOG] Network interfaces: disabled (--network none) to prevent data exfiltration.\n[SANDBOX-TEST] [BREADCRUMB 1] Executing ESLint & code compilation check...\n[SANDBOX-TEST] Command: npm run lint && npm run build\n[SANDBOX-TEST] Output: ESLint parsed 12 files. 0 syntax errors, 0 warnings.\n[SANDBOX-TEST] Output: TypeScript compilation succeeded. Output bundle created in dist/.\n[SANDBOX-TEST] Status: [PASSED]\n[SANDBOX-TEST] -------------------------------------------------------------\n[SANDBOX-TEST] [BREADCRUMB 2] Running functional Unit Tests suite...\n[SANDBOX-TEST] Command: npm run test:unit\n[SANDBOX-TEST] Output: Running 38 unit tests for project files...\n[SANDBOX-TEST] [PASS] ProjectCoreModule.test.ts (12ms)\n[SANDBOX-TEST] [PASS] SessionAuthorization.test.ts (8ms)\n[SANDBOX-TEST] [PASS] EncryptionService.test.ts (15ms)\n[SANDBOX-TEST] Output: All 38 tests passed successfully with 100% compliance. Zero regressions detected.\n[SANDBOX-TEST] Status: [PASSED]\n[SANDBOX-TEST] -------------------------------------------------------------\n[SANDBOX-TEST] [BREADCRUMB 3] Re-running vulnerability scanner over patched code...\n[SANDBOX-TEST] Scanner: Sniper AI Local SAST Engine v2.0\n[SANDBOX-TEST] Finding matching rules for: SQLi\n[SANDBOX-TEST] Scan results: 0 matching vulnerabilities found.\n[SANDBOX-TEST] Status: [PASSED]\n[SYSTEM-LOG] Triple Validation Suite passed flawlessly. All tests are green.",
+      "pullRequestUrl": "https://github.com/SniperSecurity-Remediation/pull/695",
+      "generatedAt": "2026-08-04T19:31:03.551Z"
     },
     {
-      "rank": 4,
-      "name": "فيصل الحربي (Faisal_X)",
-      "points": 1950,
-      "totalEarned": "$4,200",
-      "badges": [
-        "صائد نشط"
-      ]
+      "id": "pat-74oharagc",
+      "projectId": "proj-1",
+      "vulnerabilityId": "vuln-1785871357741-6-eh2g",
+      "originalCodeSnippet": "import { Client } from \"pg\";\n\nexport async function getUserData(userId: string) {\n  const client = new Client();\n  await client.connect();\n\n  // THREAT: Direct string concatenation allows full SQL Injection\n  const query = `SELECT * FROM users WHERE id = '${userId}'`;\n  const res = await client.query(query);\n  await client.end();\n  return res.rows[0];\n}",
+      "patchedCodeSnippet": "import { Client } from \"pg\";\n\nexport async function getUserData(userId: string) {\n  const client = new Client();\n  await client.connect();\n\n  // SECURE: Parameterized query completely prevents SQL injection\n  const query = \"SELECT * FROM users WHERE id = $1\";\n  const res = await client.query(query, [userId]);\n  await client.end();\n  return res.rows[0];\n}",
+      "validationStatus": "Passed",
+      "validationLogs": "[SYSTEM-LOG] [2026-08-04T19:31:03.556Z] Starting Isolated Sandbox Environment...\n[SYSTEM-LOG] Sandbox Kernel: Secure Linux container isolation enabled.\n[SYSTEM-LOG] Network interfaces: disabled (--network none) to prevent data exfiltration.\n[SANDBOX-TEST] [BREADCRUMB 1] Executing ESLint & code compilation check...\n[SANDBOX-TEST] Command: npm run lint && npm run build\n[SANDBOX-TEST] Output: ESLint parsed 12 files. 0 syntax errors, 0 warnings.\n[SANDBOX-TEST] Output: TypeScript compilation succeeded. Output bundle created in dist/.\n[SANDBOX-TEST] Status: [PASSED]\n[SANDBOX-TEST] -------------------------------------------------------------\n[SANDBOX-TEST] [BREADCRUMB 2] Running functional Unit Tests suite...\n[SANDBOX-TEST] Command: npm run test:unit\n[SANDBOX-TEST] Output: Running 38 unit tests for project files...\n[SANDBOX-TEST] [PASS] ProjectCoreModule.test.ts (12ms)\n[SANDBOX-TEST] [PASS] SessionAuthorization.test.ts (8ms)\n[SANDBOX-TEST] [PASS] EncryptionService.test.ts (15ms)\n[SANDBOX-TEST] Output: All 38 tests passed successfully with 100% compliance. Zero regressions detected.\n[SANDBOX-TEST] Status: [PASSED]\n[SANDBOX-TEST] -------------------------------------------------------------\n[SANDBOX-TEST] [BREADCRUMB 3] Re-running vulnerability scanner over patched code...\n[SANDBOX-TEST] Scanner: Sniper AI Local SAST Engine v2.0\n[SANDBOX-TEST] Finding matching rules for: SQLi\n[SANDBOX-TEST] Scan results: 0 matching vulnerabilities found.\n[SANDBOX-TEST] Status: [PASSED]\n[SYSTEM-LOG] Triple Validation Suite passed flawlessly. All tests are green.",
+      "pullRequestUrl": "https://github.com/SniperSecurity-Remediation/pull/961",
+      "generatedAt": "2026-08-04T19:31:03.556Z"
     },
     {
-      "rank": 5,
-      "name": "نواف الدوسري (NawafSec)",
-      "points": 1200,
-      "totalEarned": "$2,500",
-      "badges": [
-        "هاكر أخلاقي"
-      ]
+      "id": "pat-ffmyx0rn4",
+      "projectId": "proj-1",
+      "vulnerabilityId": "vuln-1785871357741-5-lad3",
+      "originalCodeSnippet": "import { Client } from \"pg\";\n\nexport async function getUserData(userId: string) {\n  const client = new Client();\n  await client.connect();\n\n  // THREAT: Direct string concatenation allows full SQL Injection\n  const query = `SELECT * FROM users WHERE id = '${userId}'`;\n  const res = await client.query(query);\n  await client.end();\n  return res.rows[0];\n}",
+      "patchedCodeSnippet": "import { Client } from \"pg\";\n\nexport async function getUserData(userId: string) {\n  const client = new Client();\n  await client.connect();\n\n  // SECURE: Parameterized query completely prevents SQL injection\n  const query = \"SELECT * FROM users WHERE id = $1\";\n  const res = await client.query(query, [userId]);\n  await client.end();\n  return res.rows[0];\n}",
+      "validationStatus": "Passed",
+      "validationLogs": "[SYSTEM-LOG] [2026-08-04T19:31:03.565Z] Starting Isolated Sandbox Environment...\n[SYSTEM-LOG] Sandbox Kernel: Secure Linux container isolation enabled.\n[SYSTEM-LOG] Network interfaces: disabled (--network none) to prevent data exfiltration.\n[SANDBOX-TEST] [BREADCRUMB 1] Executing ESLint & code compilation check...\n[SANDBOX-TEST] Command: npm run lint && npm run build\n[SANDBOX-TEST] Output: ESLint parsed 12 files. 0 syntax errors, 0 warnings.\n[SANDBOX-TEST] Output: TypeScript compilation succeeded. Output bundle created in dist/.\n[SANDBOX-TEST] Status: [PASSED]\n[SANDBOX-TEST] -------------------------------------------------------------\n[SANDBOX-TEST] [BREADCRUMB 2] Running functional Unit Tests suite...\n[SANDBOX-TEST] Command: npm run test:unit\n[SANDBOX-TEST] Output: Running 38 unit tests for project files...\n[SANDBOX-TEST] [PASS] ProjectCoreModule.test.ts (12ms)\n[SANDBOX-TEST] [PASS] SessionAuthorization.test.ts (8ms)\n[SANDBOX-TEST] [PASS] EncryptionService.test.ts (15ms)\n[SANDBOX-TEST] Output: All 38 tests passed successfully with 100% compliance. Zero regressions detected.\n[SANDBOX-TEST] Status: [PASSED]\n[SANDBOX-TEST] -------------------------------------------------------------\n[SANDBOX-TEST] [BREADCRUMB 3] Re-running vulnerability scanner over patched code...\n[SANDBOX-TEST] Scanner: Sniper AI Local SAST Engine v2.0\n[SANDBOX-TEST] Finding matching rules for: SQLi\n[SANDBOX-TEST] Scan results: 0 matching vulnerabilities found.\n[SANDBOX-TEST] Status: [PASSED]\n[SYSTEM-LOG] Triple Validation Suite passed flawlessly. All tests are green.",
+      "pullRequestUrl": "https://github.com/SniperSecurity-Remediation/pull/967",
+      "generatedAt": "2026-08-04T19:31:03.565Z"
     }
   ],
-  "bugBountySubmissions": [
+  "scanProfiles": [
     {
-      "id": "sub-1",
-      "targetName": "البوابة الرئيسية للعملاء (portal.digitaltech.sa)",
-      "title": "تخطي التحقق الثنائي عبر التلاعب بالـ Parameter في الجلسة",
-      "severity": "High",
-      "status": "Rewarded",
-      "rewardAmount": "$1,800",
-      "submittedBy": "elhammoh2795@gmail.com",
-      "submittedAt": "2026-07-10T14:22:00Z",
-      "description": "تم رصد تخطي للتحقق الثنائي عن طريق تغيير المعلمة 'step' في استجابة الجلسة من 'otp' إلى 'dashboard_main' قبل وصولها للمتصفح.",
-      "poc": "1. افتح صفحة تسجيل الدخول\n2. أدخل بريدك وكلمة المرور\n3. في صفحة الرمز الثنائي قم باعتراض الاستجابة وتعديل step=otp إلى step=success."
+      "id": "profile-deep",
+      "name": "الفحص الهيكلي الشامل (Deep Security Audit)",
+      "description": "فحص شامل يغطي Nmap, Subfinder, OWASP ZAP, Nuclei وتحديد الأخطاء البرمجية الهيكلية.",
+      "engine": "Enterprise Multi-Engine Pipeline",
+      "configuration": {
+        "depth": "full",
+        "timeout": 300,
+        "threads": 10,
+        "checkSsl": true
+      },
+      "severityPolicy": "Strict",
+      "enabled": true
     },
     {
-      "id": "sub-2",
-      "targetName": "واجهة الخدمات المالية (api.digitaltech.sa/v2/payments)",
-      "title": "قراءة ملفات النظام الداخلية عبر ثغرة XXE",
+      "id": "profile-quick",
+      "name": "الفحص السريع للثغرات (Quick Vulnerability Scan)",
+      "description": "استطلاع سريع للمنافذ والخدمات النشطة دون إجهاد السيرفر.",
+      "engine": "Fast Port & Header Recon",
+      "configuration": {
+        "depth": "quick",
+        "timeout": 60,
+        "threads": 5,
+        "checkSsl": false
+      },
+      "severityPolicy": "Standard",
+      "enabled": true
+    },
+    {
+      "id": "profile-mobile",
+      "name": "فحص تطبيقات الجوال (Mobile Security Audit)",
+      "description": "تحليل الأذونات والترخيص وعناوين IP المسربة وتطبيق OWASP Mobile Top 10.",
+      "engine": "ApkScanner Engine",
+      "configuration": {
+        "depth": "mobile",
+        "timeout": 180,
+        "threads": 4,
+        "decompile": true
+      },
+      "severityPolicy": "Strict",
+      "enabled": true
+    },
+    {
+      "id": "profile-api",
+      "name": "فحص واجهات البرمجة (API Security Audit)",
+      "description": "فحص ثغرات REST & GraphQL ونقاط النهاية BOLA/IDOR وامتثال OWASP API Top 10.",
+      "engine": "Zap & Nuclei API Modules",
+      "configuration": {
+        "depth": "api",
+        "timeout": 200,
+        "threads": 8
+      },
+      "severityPolicy": "Standard",
+      "enabled": true
+    }
+  ],
+  "notifications": [
+    {
+      "id": "notif-1",
+      "title": "اكتشاف ثغرة حرجة جديدة",
+      "message": "تم الكشف عن ثغرة SQL Injection حرجة في خادم البوابة الرئيسية.",
       "severity": "Critical",
-      "status": "Under Review",
-      "rewardAmount": "$0 (قيد المراجعة)",
-      "submittedBy": "elhammoh2795@gmail.com",
-      "submittedAt": "2026-07-16T11:05:00Z",
-      "description": "واجهة الـ XML المدمجة لا تقوم بإيقاف الكيانات الخارجية، مما يمكن المهاجم من تضمين ملفات داخلية كـ /etc/passwd.",
-      "poc": "POST /api/xml-endpoint HTTP/1.1\n\n<!DOCTYPE foo [<!ENTITY xxe SYSTEM 'file:///etc/passwd'>]>\n<user>&xxe;</user>"
+      "status": "Unread",
+      "read": false
+    },
+    {
+      "id": "notif-2",
+      "title": "اكتمال الفحص الشامل",
+      "message": "تمت بنجاح عملية الفحص الدوري لنطاقات الشركة وتحديث درجة المخاطر.",
+      "severity": "Info",
+      "status": "Read",
+      "read": true
     }
-  ]
+  ],
+  "aiConsultations": []
 }

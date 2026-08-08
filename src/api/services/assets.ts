@@ -5,28 +5,47 @@ export const assetsService = {
   getAssets: async (params?: { search?: string; category?: string; risk?: string }): Promise<AssetWorkflow[]> => {
     let extractedAssets: AssetWorkflow[] = [];
     try {
-      const response = await apiClient.get<any>('/projects');
-      const projects = Array.isArray(response) ? response : (response?.data || []);
-      
-      if (Array.isArray(projects)) {
-        projects.forEach((proj: any) => {
-          if (Array.isArray(proj.targets)) {
-            proj.targets.forEach((t: any) => {
-              extractedAssets.push({
-                id: t.id,
-                name: t.name || t.url || 'Target Asset',
-                type: t.type || 'Web App',
-                category: (t.category as any) || 'Infrastructure',
-                risk: t.risk || 'Medium',
-                tags: t.tags || ['Verified'],
-                owner: proj.name || 'SecOps Team',
-                lastSeen: 'Just now',
-                ipAddress: t.ipAddress || 'Unknown',
-                environment: 'Production'
+      // First try fetching normalized assets from backend
+      const res = await apiClient.get<any>('/assets');
+      const directAssets = Array.isArray(res) ? res : (res?.data || []);
+      if (Array.isArray(directAssets) && directAssets.length > 0) {
+        extractedAssets = directAssets.map((a: any) => ({
+          id: a.id,
+          name: a.name || 'أصل أمني',
+          type: a.type || 'Server',
+          category: 'Infrastructure',
+          risk: 'Medium',
+          tags: ['Verified'],
+          owner: 'SecOps Team',
+          lastSeen: 'الآن',
+          ipAddress: '127.0.0.1',
+          environment: 'Production'
+        }));
+      } else {
+        // Fallback to project targets
+        const response = await apiClient.get<any>('/projects');
+        const projects = Array.isArray(response) ? response : (response?.data || []);
+        
+        if (Array.isArray(projects)) {
+          projects.forEach((proj: any) => {
+            if (Array.isArray(proj.targets)) {
+              proj.targets.forEach((t: any) => {
+                extractedAssets.push({
+                  id: t.id,
+                  name: t.name || t.url || 'Target Asset',
+                  type: t.type || 'Web App',
+                  category: (t.category as any) || 'Infrastructure',
+                  risk: t.risk || 'Medium',
+                  tags: t.tags || ['Verified'],
+                  owner: proj.name || 'SecOps Team',
+                  lastSeen: 'Just now',
+                  ipAddress: t.ipAddress || 'Unknown',
+                  environment: 'Production'
+                });
               });
-            });
-          }
-        });
+            }
+          });
+        }
       }
     } catch {
       extractedAssets = [];

@@ -63,14 +63,19 @@ export class SelfHealingService {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+      let timerId: NodeJS.Timeout;
+      const timer = new Promise<never>((_, reject) => {
+        timerId = setTimeout(() => reject(new Error("Timeout")), 8000);
+      });
+      const apiCall = ai.models.generateContent({
+        model: "gemini-3.6-flash",
         contents: prompt,
         config: {
           systemInstruction,
           temperature: 0.2
         }
       });
+      const response = await Promise.race([apiCall, timer]).finally(() => clearTimeout(timerId!)) as any;
 
       const rawText = response.text || "";
       // Strip markdown code blocks

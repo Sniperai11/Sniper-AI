@@ -5,15 +5,24 @@ export const companies = pgTable("companies", {
   id: text("id").primaryKey(), // UUID or comp-1
   name: text("name").notNull(),
   ownerEmail: text("owner_email").notNull().unique(),
+  industry: text("industry").default("Information Technology"),
+  country: text("country").default("Saudi Arabia"),
+  subscriptionPlan: text("subscription_plan").default("Enterprise"),
+  subscriptionStatus: text("subscription_status").default("Active"),
+  timezone: text("timezone").default("Asia/Riyadh"),
+  logo: text("logo"),
   joinedAt: timestamp("joined_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  uid: text("uid").notNull().unique(), // Firebase Auth UID
+  uid: text("uid").notNull().unique(), // Firebase Auth UID / User ID
   email: text("email").notNull().unique(),
   name: text("name"),
   role: text("role").default("Viewer"),
+  companyId: text("company_id").references(() => companies.id, { onDelete: "cascade" }).default("comp-1"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -36,15 +45,52 @@ export const subscription = pgTable("subscription", {
   cost: integer("cost").notNull(),
 });
 
+export const scanProfiles = pgTable("scan_profiles", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  engine: text("engine").notNull(), // Enterprise Engine, Nmap, Nuclei, Zap, etc.
+  configuration: jsonb("configuration").notNull(), // { depth, timeout, headers, threads }
+  severityPolicy: text("severity_policy").default("Standard"),
+  enabled: boolean("enabled").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const auditLogs = pgTable("audit_logs", {
   id: text("id").primaryKey(),
   companyId: text("company_id").references(() => companies.id, { onDelete: "cascade" }).default("comp-1"),
   userId: text("user_id"),
   userEmail: text("user_email").notNull(),
   action: text("action").notNull(),
+  resource: text("resource").default("System"),
   details: text("details").notNull(),
   ipAddress: text("ip_address").notNull(),
+  browser: text("browser").default("Mozilla/5.0"),
+  metadata: jsonb("metadata"),
   timestamp: timestamp("timestamp").defaultNow(),
+});
+
+export const notifications = pgTable("notifications", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  severity: text("severity").default("Info"), // Info, Warning, Critical
+  status: text("status").default("Unread"),
+  read: boolean("read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const aiConsultations = pgTable("ai_consultations", {
+  id: text("id").primaryKey(),
+  prompt: text("prompt").notNull(),
+  response: text("response").notNull(),
+  model: text("model").notNull(),
+  tokens: integer("tokens").default(0),
+  latency: integer("latency").default(0),
+  user: text("user").notNull(),
+  vulnerability: text("vulnerability"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const projects = pgTable("projects", {
@@ -55,9 +101,18 @@ export const projects = pgTable("projects", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const assets = pgTable("assets", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // Server, API, Website, Mobile App, Cloud, Network, Container, Kubernetes
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const targets = pgTable("targets", {
   id: text("id").primaryKey(),
   projectId: text("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  assetId: text("asset_id").references(() => assets.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   url: text("url").notNull(),
   type: text("type").notNull(),
@@ -83,6 +138,9 @@ export const vulnerabilities = pgTable("vulnerabilities", {
   remediation: text("remediation").notNull(),
   isFalsePositive: boolean("is_false_positive").default(false),
   complianceMapping: jsonb("compliance_mapping").notNull(), // { owasp, iso27001, pciDss }
+  state: text("state").default("Triaged"),
+  owner: text("owner").default("SecOps Analyst"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const reportsHistory = pgTable("reports_history", {
@@ -96,6 +154,17 @@ export const reportsHistory = pgTable("reports_history", {
   executiveSummary: text("executive_summary").notNull(),
   compliancePercentage: jsonb("compliance_percentage").notNull(), // { owasp, pciDss, iso27001 }
   vulnerabilities: jsonb("vulnerabilities").notNull(), // list of nested vulnerabilities
+});
+
+export const reportFiles = pgTable("report_files", {
+  id: text("id").primaryKey(),
+  reportId: text("report_id").references(() => reportsHistory.id, { onDelete: "cascade" }),
+  pdf: text("pdf"),
+  html: text("html"),
+  json: text("json"),
+  checksum: text("checksum"),
+  size: integer("size").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const bugBountyPrograms = pgTable("bug_bounty_programs", {
@@ -134,6 +203,8 @@ export const activeScans = pgTable("active_scans", {
   id: text("id").primaryKey(),
   targetId: text("target_id").notNull(),
   targetName: text("target_name").notNull(),
+  userId: text("user_id"),
+  userEmail: text("user_email"),
   status: text("status").notNull(),
   progress: integer("progress").notNull(),
   startedAt: timestamp("started_at").defaultNow(),
@@ -156,15 +227,28 @@ export const remediations = pgTable("remediations", {
 
 // Relationships
 export const projectsRelations = relations(projects, ({ many }) => ({
+  assets: many(assets),
   targets: many(targets),
   reports: many(reportsHistory),
   remediations: many(remediations),
+}));
+
+export const assetsRelations = relations(assets, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [assets.projectId],
+    references: [projects.id],
+  }),
+  targets: many(targets),
 }));
 
 export const targetsRelations = relations(targets, ({ one, many }) => ({
   project: one(projects, {
     fields: [targets.projectId],
     references: [projects.id],
+  }),
+  asset: one(assets, {
+    fields: [targets.assetId],
+    references: [assets.id],
   }),
   vulnerabilities: many(vulnerabilities),
 }));
@@ -185,5 +269,16 @@ export const remediationsRelations = relations(remediations, ({ one }) => ({
   vulnerability: one(vulnerabilities, {
     fields: [remediations.vulnerabilityId],
     references: [vulnerabilities.id],
+  }),
+}));
+
+export const reportsHistoryRelations = relations(reportsHistory, ({ many }) => ({
+  reportFiles: many(reportFiles),
+}));
+
+export const reportFilesRelations = relations(reportFiles, ({ one }) => ({
+  report: one(reportsHistory, {
+    fields: [reportFiles.reportId],
+    references: [reportsHistory.id],
   }),
 }));

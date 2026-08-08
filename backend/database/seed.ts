@@ -21,8 +21,83 @@ async function main() {
     id: "comp-1",
     name: "شركة التقنية للحلول الرقمية (DigitalTech Solutions)",
     ownerEmail: "owner@digitaltech.sa",
+    industry: "Information Technology & Security",
+    country: "Saudi Arabia",
+    subscriptionPlan: "Enterprise Pro",
+    subscriptionStatus: "Active",
+    timezone: "Asia/Riyadh",
     joinedAt: new Date("2026-01-10T12:00:00Z"),
   }).onConflictDoNothing();
+
+  // 0.1 Scan Profiles
+  console.log("[Seed] Inserting default Scan Profiles...");
+  const defaultProfiles = [
+    {
+      id: "profile-deep",
+      name: "الفحص الهيكلي الشامل (Deep Security Audit)",
+      description: "فحص شامل يغطي Nmap, Subfinder, OWASP ZAP, Nuclei وتحديد الأخطاء البرمجية الهيكلية.",
+      engine: "Enterprise Multi-Engine Pipeline",
+      configuration: { depth: "full", timeout: 300, threads: 10, checkSsl: true },
+      severityPolicy: "Strict",
+      enabled: true,
+    },
+    {
+      id: "profile-quick",
+      name: "الفحص السريع للثغرات (Quick Vulnerability Scan)",
+      description: "استطلاع سريع للمنافذ والخدمات النشطة دون إجهاد السيرفر.",
+      engine: "Fast Port & Header Recon",
+      configuration: { depth: "quick", timeout: 60, threads: 5, checkSsl: false },
+      severityPolicy: "Standard",
+      enabled: true,
+    },
+    {
+      id: "profile-mobile",
+      name: "فحص تطبيقات الجوال (Mobile Security Audit)",
+      description: "تحليل الأذونات والترخيص وعناوين IP المسربة وتطبيق OWASP Mobile Top 10.",
+      engine: "ApkScanner Engine",
+      configuration: { depth: "mobile", timeout: 180, threads: 4, decompile: true },
+      severityPolicy: "Strict",
+      enabled: true,
+    },
+    {
+      id: "profile-api",
+      name: "فحص واجهات البرمجة (API Security Audit)",
+      description: "فحص ثغرات REST & GraphQL ونقاط النهاية BOLA/IDOR وامتثال OWASP API Top 10.",
+      engine: "Zap & Nuclei API Modules",
+      configuration: { depth: "api", timeout: 200, threads: 8 },
+      severityPolicy: "Standard",
+      enabled: true,
+    }
+  ];
+
+  for (const prof of defaultProfiles) {
+    await db.insert(schema.scanProfiles).values(prof).onConflictDoNothing();
+  }
+
+  // 0.2 Default Notifications
+  console.log("[Seed] Inserting default Notifications...");
+  const defaultNotifs = [
+    {
+      id: "notif-1",
+      title: "اكتشاف ثغرة حرجة جديدة",
+      message: "تم الكشف عن ثغرة SQL Injection حرجة في خادم البوابة الرئيسية.",
+      severity: "Critical",
+      status: "Unread",
+      read: false,
+    },
+    {
+      id: "notif-2",
+      title: "اكتمال الفحص الشامل",
+      message: "تمت بنجاح عملية الفحص الدوري لنطاقات الشركة وتحديث درجة المخاطر.",
+      severity: "Info",
+      status: "Read",
+      read: true,
+    }
+  ];
+
+  for (const notif of defaultNotifs) {
+    await db.insert(schema.notifications).values(notif).onConflictDoNothing();
+  }
 
   // 1. Team Members
   if (data.teamMembers && data.teamMembers.length > 0) {
@@ -85,9 +160,19 @@ async function main() {
       // Insert targets for this project
       if (project.targets && project.targets.length > 0) {
         for (const target of project.targets) {
+          const assetId = `asset-${target.id}`;
+          await db.insert(schema.assets).values({
+            id: assetId,
+            projectId: project.id,
+            name: target.name || "أصل أمني مفحوص",
+            type: target.type || "Server",
+            createdAt: new Date(),
+          }).onConflictDoNothing();
+
           await db.insert(schema.targets).values({
             id: target.id,
             projectId: project.id,
+            assetId: assetId,
             name: target.name,
             url: target.url,
             type: target.type,

@@ -27,6 +27,7 @@
     "firebase-admin": "^14.2.0",
     "glob": "^13.0.6",
     "helmet": "^8.3.0",
+    "html2pdf.js": "^0.14.0",
     "lucide-react": "^1.26.0",
     "motion": "^12.23.24",
     "pg": "^8.22.0",

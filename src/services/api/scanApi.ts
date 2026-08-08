@@ -36,4 +36,34 @@ export const scanApi = {
     const res = await httpClient.post(`/vulnerabilities/${vulnId}/remediate`);
     return res.data?.data || res.data;
   },
+
+  getScanProfiles: async () => {
+    const res = await httpClient.get('/scans/profiles');
+    return res.data?.data || res.data || [];
+  },
+
+  getAssets: async (projectId?: string) => {
+    const res = await httpClient.get('/assets', { params: { projectId } });
+    return res.data?.data || res.data || [];
+  },
+
+  createAsset: async (assetData: { name: string; type?: string; projectId?: string }) => {
+    const res = await httpClient.post('/assets', assetData);
+    return res.data?.data || res.data;
+  },
+
+  getNotifications: async () => {
+    const res = await httpClient.get('/notifications');
+    return res.data?.data || res.data || [];
+  },
+
+  markNotificationRead: async (id: string) => {
+    const res = await httpClient.post(`/notifications/${id}/read`);
+    return res.data?.data || res.data;
+  },
+
+  getAIConsultations: async () => {
+    const res = await httpClient.get('/ai-consultations');
+    return res.data?.data || res.data || [];
+  },
 };

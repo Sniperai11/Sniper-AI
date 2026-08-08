@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { CheckSquare, Search, Filter, Clock, Users, ArrowUpRight, CheckCircle, AlertTriangle, Plus, X } from 'lucide-react';
+import { CheckSquare, Search, Filter, Clock, Users, ArrowUpRight, CheckCircle, AlertTriangle, Plus, X, Sparkles } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useTasks, useCreateTask, useUpdateTaskStatus } from '../hooks/api/useTasks';
+import { tasksService } from '../api/services/tasks';
 import { TaskWorkflow, TaskStatus } from '../api/types/workflows';
 
 export const Tasks = () => {
@@ -173,6 +174,24 @@ export const Tasks = () => {
                   </td>
                   <td className="px-4 py-4 text-left">
                     <div className="flex items-center justify-end gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={async () => {
+                          try {
+                            const res = await tasksService.performAIRemediation(task.id);
+                            alert(`تم الشفاء الذاتي بالذكاء الاصطناعي بنجاح!\nالكود المصحح:\n\n${res?.patchedCodeSnippet || res?.result?.patchedCodeSnippet || 'تم تصحيح وتأمين الكود بنجاح'}`);
+                            window.location.reload();
+                          } catch (err: any) {
+                            alert(err?.message || 'فشل الشفاء الذاتي بالذكاء الاصطناعي');
+                          }
+                        }}
+                        className="h-8 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 text-xs gap-1"
+                      >
+                        <Sparkles className="h-3 w-3 text-cyan-400" />
+                        <span>معالجة بالذكاء الاصطناعي</span>
+                      </Button>
+
                       {task.status !== 'Done' && (
                         <Button 
                           variant="ghost" 

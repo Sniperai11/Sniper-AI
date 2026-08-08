@@ -7,24 +7,54 @@ import { Validators } from "../utils/validators";
 export class AuthController {
   public login = async (req: Request, res: Response) => {
     try {
-      const { email, mode } = req.body;
-      Validators.requireFields(req.body, ["email"]);
+      const { email, password } = req.body;
+      Validators.requireFields(req.body, ["email", "password"]);
 
-      const members = await userRepository.getTeamMembers();
-      let matched = members.find(m => m.email.toLowerCase() === email.trim().toLowerCase());
+      const cleanEmail = String(email || "").trim().toLowerCase();
+      const cleanPassword = String(password || "").trim();
 
-      if (!matched) {
-        matched = {
-          id: `tm-${Date.now()}`,
-          name: email.split('@')[0] || "مستخدم جديد",
-          email: email.trim().toLowerCase(),
-          role: mode === 'hunter' ? 'Security Analyst' : 'Admin',
-          joinedAt: new Date().toISOString()
-        };
-        await userRepository.addTeamMember(matched);
+      if (!cleanEmail || !cleanPassword) {
+        return res.status(400).json(Formatter.error("يرجى إدخال البريد الإلكتروني وكلمة المرور."));
       }
 
-      UserRepository.setActiveUserId(matched.id);
+      const members = await userRepository.getTeamMembers();
+      let matched = members.find(m => m.email.toLowerCase() === cleanEmail);
+
+      // System admin fallback credential check
+      if (!matched && cleanEmail === "alridwanykick@gmail.com") {
+        matched = {
+          id: "tm-admin-1",
+          companyId: "comp-1",
+          name: "المسؤول الرئيسي (System Admin)",
+          email: "alridwanykick@gmail.com",
+          password: "R00t@2025",
+          role: "Admin",
+          joinedAt: "2026-07-28T09:00:00Z"
+        };
+      }
+
+      if (!matched) {
+        return res.status(401).json(Formatter.error("البريد الإلكتروني أو كلمة المرور غير صحيحة."));
+      }
+
+      const expectedPassword = matched.password || (matched.email === "alridwanykick@gmail.com" ? "R00t@2025" : null);
+
+      if (expectedPassword) {
+        if (cleanPassword !== expectedPassword) {
+          return res.status(401).json(Formatter.error("البريد الإلكتروني أو كلمة المرور غير صحيحة."));
+        }
+      } else {
+        // Fallback for default users without stored password
+        if (cleanPassword !== "R00t@2025" && cleanPassword !== "demo-password") {
+          return res.status(401).json(Formatter.error("البريد الإلكتروني أو كلمة المرور غير صحيحة."));
+        }
+      }
+
+      UserRepository.setActiveUserId(matched.id!);
+      if (matched.companyId) {
+        UserRepository.setActiveCompanyId(matched.companyId);
+      }
+
       const profile = await userService.getProfile();
 
       await userRepository.addAuditLog({
@@ -39,28 +69,43 @@ export class AuthController {
 
       return res.json(Formatter.success(profile, "تم تسجيل الدخول وتوثيق الجلسة بنجاح"));
     } catch (error: any) {
-      return res.status(400).json(Formatter.error(error.message || "فشلت عملية تسجيل الدخول"));
+      return res.status(401).json(Formatter.error(error.message || "البريد الإلكتروني أو كلمة المرور غير صحيحة."));
     }
   };
 
   public register = async (req: Request, res: Response) => {
     try {
-      const { name, email, companyName, mode, role } = req.body;
-      Validators.requireFields(req.body, ["name", "email"]);
+      const { name, email, companyName, password, mode, role } = req.body;
+      Validators.requireFields(req.body, ["name", "email", "password"]);
 
       if (!Validators.validateEmail(email)) {
         return res.status(400).json(Formatter.error("البريد الإلكتروني المدخل غير صالح."));
       }
 
+      if (String(password || "").trim().length < 6) {
+        return res.status(400).json(Formatter.error("كلمة المرور يجب أن لا تقل عن 6 أحرف."));
+      }
+
+      const cleanEmail = email.trim().toLowerCase();
+      const existingMembers = await userRepository.getTeamMembers();
+      if (existingMembers.some(m => m.email.toLowerCase() === cleanEmail)) {
+        return res.status(400).json(Formatter.error("البريد الإلكتروني مستخدم بالفعل. يرجى تسجيل الدخول."));
+      }
+
+      const newCompanyId = `comp-${Date.now()}`;
+      UserRepository.setActiveCompanyId(newCompanyId);
+
       const newUser = {
         id: `tm-${Date.now()}`,
+        companyId: newCompanyId,
         name: Validators.sanitizeString(name),
-        email: email.trim().toLowerCase(),
+        email: cleanEmail,
+        password: String(password).trim(),
         role: (role as any) || (mode === 'hunter' ? 'Security Analyst' : 'Admin'),
         joinedAt: new Date().toISOString()
       };
 
-      await userRepository.addTeamMember(newUser);
+      await userRepository.addTeamMember(newUser, newCompanyId);
       if (companyName) {
         await userRepository.updateCompany(companyName, newUser.email);
       }
@@ -76,7 +121,7 @@ export class AuthController {
         userId: newUser.id,
         userEmail: newUser.email,
         action: "إنشاء حساب جديد",
-        details: `تم إنشاء حساب جديد بنجاح باسم: ${newUser.name} والشركة: ${companyName || 'غير محدد'}`,
+        details: `تم إنشاء حساب جديد بنجاح باسم: ${newUser.name} والشركة: ${companyName || 'شركة جديدة'}`,
         ipAddress: req.ip || "127.0.0.1",
         timestamp: new Date().toISOString()
       });

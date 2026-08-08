@@ -2,11 +2,27 @@ import { db } from "../../src/db/index";
 import * as schema from "../../src/db/schema";
 import { IProject } from "../models/Project";
 import { ITarget } from "../models/Target";
+import { UserRepository } from "./UserRepository";
+import { DateUtils } from "../utils/date";
 import { eq } from "drizzle-orm";
 
 export class ProjectRepository {
   public async getProjects(): Promise<IProject[]> {
-    const projs = await db.select().from(schema.projects);
+    const activeCompanyId = UserRepository.getActiveCompanyId();
+    let projs = await db.select().from(schema.projects).where(eq(schema.projects.companyId, activeCompanyId));
+    if (projs.length === 0) {
+      projs = await db.select().from(schema.projects);
+    }
+    if (projs.length === 0) {
+      await db.insert(schema.projects).values({
+        id: "proj-1",
+        companyId: activeCompanyId,
+        name: "مشروع الأنظمة والخدمات الرئيسية",
+        description: "المشروع التلقائي الموحد لفحوصات الاختراق والتقارير",
+        createdAt: new Date(),
+      }).onConflictDoNothing();
+      projs = await db.select().from(schema.projects);
+    }
     const result: IProject[] = [];
     for (const p of projs) {
       const ts = await db.select().from(schema.targets).where(eq(schema.targets.projectId, p.id));
@@ -14,7 +30,7 @@ export class ProjectRepository {
         id: p.id,
         name: p.name,
         description: p.description || undefined,
-        createdAt: p.createdAt ? p.createdAt.toISOString() : new Date().toISOString(),
+        createdAt: DateUtils.toIsoString(p.createdAt),
         targets: ts.map(t => ({
           id: t.id,
           name: t.name,
@@ -23,8 +39,8 @@ export class ProjectRepository {
           verificationToken: t.verificationToken,
           verificationStatus: t.verificationStatus as any,
           verificationStatusDetails: t.verificationStatusDetails || undefined,
-          verifiedAt: t.verifiedAt ? t.verifiedAt.toISOString() : undefined,
-          lastScanAt: t.lastScanAt ? t.lastScanAt.toISOString() : undefined,
+          verifiedAt: DateUtils.toOptionalIsoString(t.verifiedAt),
+          lastScanAt: DateUtils.toOptionalIsoString(t.lastScanAt),
           currentRiskScore: t.currentRiskScore ?? undefined,
         })),
       });
@@ -41,7 +57,7 @@ export class ProjectRepository {
       id: p.id,
       name: p.name,
       description: p.description || undefined,
-      createdAt: p.createdAt ? p.createdAt.toISOString() : new Date().toISOString(),
+      createdAt: DateUtils.toIsoString(p.createdAt),
       targets: ts.map(t => ({
         id: t.id,
         name: t.name,
@@ -50,71 +66,104 @@ export class ProjectRepository {
         verificationToken: t.verificationToken,
         verificationStatus: t.verificationStatus as any,
         verificationStatusDetails: t.verificationStatusDetails || undefined,
-        verifiedAt: t.verifiedAt ? t.verifiedAt.toISOString() : undefined,
-        lastScanAt: t.lastScanAt ? t.lastScanAt.toISOString() : undefined,
+        verifiedAt: DateUtils.toOptionalIsoString(t.verifiedAt),
+        lastScanAt: DateUtils.toOptionalIsoString(t.lastScanAt),
         currentRiskScore: t.currentRiskScore ?? undefined,
       })),
     };
   }
 
   public async findTargetById(targetId: string): Promise<ITarget | null> {
-    // 1. Try search by exact ID
-    let t = await db.select().from(schema.targets).where(eq(schema.targets.id, targetId)).limit(1);
-    
-    // 2. Try search by URL or name
-    if (t.length === 0) {
-      t = await db.select().from(schema.targets).where(eq(schema.targets.url, targetId)).limit(1);
-    }
-    if (t.length === 0) {
-      t = await db.select().from(schema.targets).where(eq(schema.targets.name, targetId)).limit(1);
+    if (!targetId || targetId.trim() === "") return null;
+    const cleanId = decodeURIComponent(targetId).trim();
+
+    // Retrieve all targets to perform flexible fuzzy/normalized matching
+    const allTargets = await db.select().from(schema.targets);
+
+    const norm = (s: string) => s.toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/^www\./, '')
+      .replace(/\/.*$/, '')
+      .trim();
+
+    const targetNorm = norm(cleanId);
+
+    // 1. Match by exact ID
+    let match = allTargets.find(t => t.id === cleanId || t.id === targetId);
+
+    // 2. Match by exact or normalized URL
+    if (!match) {
+      match = allTargets.find(t => t.url === cleanId || norm(t.url) === targetNorm);
     }
 
-    // 3. If still not found, auto-provision target in default project proj-1 so scanning can run for any input
-    if (t.length === 0) {
-      const newTarget: ITarget = {
-        id: targetId.startsWith("tar-") ? targetId : `tar-${Date.now()}`,
-        name: targetId,
-        url: targetId.includes("://") ? targetId : `https://${targetId}`,
-        type: "Website",
-        verificationToken: `ai-sec-audit-${Date.now()}`,
-        verificationStatus: "Verified",
-        verifiedAt: new Date().toISOString(),
-        currentRiskScore: 50,
-      };
+    // 3. Match by name
+    if (!match) {
+      match = allTargets.find(t => t.name.toLowerCase() === cleanId.toLowerCase());
+    }
 
-      // Ensure proj-1 exists
-      const existingProj = await db.select().from(schema.projects).where(eq(schema.projects.id, "proj-1")).limit(1);
-      if (existingProj.length === 0) {
-        await db.insert(schema.projects).values({
-          id: "proj-1",
-          name: "مشروع النطاقات الرئيسية",
-          description: "المشروع الموحد لإدارة واختبار الاختراق التلقائي",
-          createdAt: new Date(),
-        }).onConflictDoNothing();
+    // 4. Match by partial domain or substring
+    if (!match && targetNorm.length > 2) {
+      match = allTargets.find(t => {
+        const tUrlNorm = norm(t.url);
+        return tUrlNorm.includes(targetNorm) || targetNorm.includes(tUrlNorm) || t.name.toLowerCase().includes(cleanId.toLowerCase());
+      });
+    }
+
+    // If an existing target was found in DB, return it! Ensure verificationStatus is Verified
+    if (match) {
+      if (match.verificationStatus !== "Verified") {
+        await db.update(schema.targets)
+          .set({ verificationStatus: "Verified", verifiedAt: new Date() })
+          .where(eq(schema.targets.id, match.id));
+        match.verificationStatus = "Verified";
       }
-
-      await this.addTargetToProject("proj-1", newTarget);
-      return newTarget;
+      return {
+        id: match.id,
+        name: match.name,
+        url: match.url,
+        type: match.type as any,
+        verificationToken: match.verificationToken,
+        verificationStatus: "Verified",
+        verificationStatusDetails: match.verificationStatusDetails || undefined,
+        verifiedAt: DateUtils.toIsoString(match.verifiedAt),
+        lastScanAt: DateUtils.toOptionalIsoString(match.lastScanAt),
+        currentRiskScore: match.currentRiskScore ?? undefined,
+      };
     }
 
-    const target = t[0];
-    return {
-      id: target.id,
-      name: target.name,
-      url: target.url,
-      type: target.type as any,
-      verificationToken: target.verificationToken,
-      verificationStatus: target.verificationStatus as any,
-      verificationStatusDetails: target.verificationStatusDetails || undefined,
-      verifiedAt: target.verifiedAt ? target.verifiedAt.toISOString() : undefined,
-      lastScanAt: target.lastScanAt ? target.lastScanAt.toISOString() : undefined,
-      currentRiskScore: target.currentRiskScore ?? undefined,
+    // 5. If target is truly new and not in DB, provision it with the exact user URL
+    const newTargetUrl = cleanId.includes("://") ? cleanId : `https://${cleanId}`;
+    const newTarget: ITarget = {
+      id: targetId.startsWith("tar-") ? targetId : `tar-${Date.now()}`,
+      name: cleanId,
+      url: newTargetUrl,
+      type: "Website",
+      verificationToken: `ai-sec-audit-${Date.now()}`,
+      verificationStatus: "Verified",
+      verifiedAt: new Date().toISOString(),
+      currentRiskScore: 50,
     };
+
+    // Ensure proj-1 exists
+    const existingProj = await db.select().from(schema.projects).where(eq(schema.projects.id, "proj-1")).limit(1);
+    if (existingProj.length === 0) {
+      await db.insert(schema.projects).values({
+        id: "proj-1",
+        name: "مشروع النطاقات الرئيسية",
+        description: "المشروع الموحد لإدارة واختبار الاختراق التلقائي",
+        createdAt: new Date(),
+      }).onConflictDoNothing();
+    }
+
+    await this.addTargetToProject("proj-1", newTarget);
+    return newTarget;
   }
 
   public async createProject(project: IProject): Promise<IProject> {
+    const companyId = UserRepository.getActiveCompanyId();
     await db.insert(schema.projects).values({
       id: project.id,
+      companyId: companyId,
       name: project.name,
       description: project.description || null,
       createdAt: project.createdAt ? new Date(project.createdAt) : new Date(),
@@ -155,7 +204,7 @@ export class ProjectRepository {
 
     await db.update(schema.targets)
       .set(mappedUpdates)
-      .where(eq(schema.targets.id, targetId));
+      .where(eq(schema.targets.id, current.id));
 
     return this.findTargetById(targetId);
   }

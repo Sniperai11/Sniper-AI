@@ -1,6 +1,8 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "./schema";
+import fs from "fs";
+import path from "path";
 
 const { Pool } = pg;
 
@@ -8,19 +10,18 @@ declare global {
   var _postgresPool: pg.Pool | undefined;
 }
 
-// In-Memory Database Store for seamless development & fallback execution
+const DB_FILE = path.join(process.cwd(), "database.json");
+
+// In-Memory Database Store with JSON disk persistence
 const inMemoryStore: Record<string, any[]> = {
   teamMembers: [
-    { id: "tm-1", companyId: "comp-1", name: "إبراهيم العتيبي", email: "elhammoh2795@gmail.com", role: "Admin", joinedAt: new Date("2026-01-10T12:00:00Z") },
-    { id: "tm-2", companyId: "comp-1", name: "طارق الشمري", email: "hunter.tareq@security.sa", role: "Security Analyst", joinedAt: new Date("2026-01-12T12:00:00Z") },
-    { id: "tm-3", companyId: "comp-1", name: "سارة خالد", email: "sara@company.sa", role: "Security Analyst", joinedAt: new Date("2026-01-15T12:00:00Z") },
+    { id: "tm-admin-1", companyId: "comp-1", name: "المسؤول الرئيسي (System Admin)", email: "alridwanykick@gmail.com", password: "R00t@2025", role: "Admin", joinedAt: new Date("2026-07-28T09:00:00Z") }
   ],
   companies: [
-    { id: "comp-1", name: "شركة قناص الأمن السيبراني", ownerEmail: "elhammoh2795@gmail.com", joinedAt: new Date("2026-01-10T12:00:00Z") }
+    { id: "comp-1", name: "منصة Sniper AI Security", ownerEmail: "alridwanykick@gmail.com", joinedAt: new Date("2026-07-28T09:00:00Z") }
   ],
   users: [
-    { id: 1, uid: "usr-001", email: "elhammoh2795@gmail.com", name: "إبراهيم العتيبي", role: "Admin", createdAt: new Date("2026-01-10T12:00:00Z") },
-    { id: 2, uid: "usr-002", email: "hunter.tareq@security.sa", name: "طارق الشمري", role: "Security Analyst", createdAt: new Date("2026-01-12T12:00:00Z") }
+    { id: 1, uid: "usr-admin-1", email: "alridwanykick@gmail.com", name: "المسؤول الرئيسي (System Admin)", role: "Admin", createdAt: new Date("2026-07-28T09:00:00Z") }
   ],
   subscription: [
     {
@@ -34,37 +35,198 @@ const inMemoryStore: Record<string, any[]> = {
         maxProjects: 100,
         maxTargetsPerProject: 30,
         scansPerMonth: 500,
-        scansRemainingThisMonth: 485,
+        scansRemainingThisMonth: 500,
         aiConsultationsPerMonth: 1000,
-        aiConsultationsRemaining: 920
+        aiConsultationsRemaining: 1000
       }
     }
   ],
-  auditLogs: [
-    { id: "log-1", companyId: "comp-1", userId: "tm-1", userEmail: "elhammoh2795@gmail.com", action: "بدء النظام", details: "تم تشغيل منصة Sniper AI Security بنجاح", ipAddress: "127.0.0.1", timestamp: new Date() }
-  ],
+  auditLogs: [],
   projects: [
-    { id: "proj-1", companyId: "comp-1", name: "مشروع البنية التحتية الرئيسية", description: "فحص الخوادم والنطاقات الحكومية والمؤسسية", createdAt: new Date("2026-01-10T12:00:00Z") }
+    {
+      id: "proj-1",
+      companyId: "comp-1",
+      name: "مشروع النطاقات الرئيسية (Core Infrastructure)",
+      description: "فحص البنية التحتية الرئيسية للمؤسسة والبوابات الإلكترونية.",
+      createdAt: new Date("2026-01-15T08:00:00Z")
+    },
+    {
+      id: "proj-2",
+      companyId: "comp-1",
+      name: "مشروع تطبيقات الجوال (Mobile Apps Fleet)",
+      description: "فحص تطبيقات iOS & Android وواجهات API المرتبطة بها.",
+      createdAt: new Date("2026-02-01T10:00:00Z")
+    }
   ],
   targets: [
-    { id: "tar-1", projectId: "proj-1", name: "الموقع الرئيسي", url: "https://example.sa", type: "Website", verificationToken: "token-1", verificationStatus: "Verified", currentRiskScore: 25, verifiedAt: new Date() }
+    {
+      id: "tgt-1",
+      projectId: "proj-1",
+      name: "البوابة الرئيسية (Main Gateway)",
+      url: "https://portal.sniper-sec.local",
+      type: "Web App",
+      verificationStatus: "Verified",
+      verifiedAt: new Date("2026-01-16T10:00:00Z"),
+      lastScanAt: new Date("2026-08-01T14:30:00Z"),
+      currentRiskScore: 68
+    },
+    {
+      id: "tgt-2",
+      projectId: "proj-1",
+      name: "سيرفر الهوية والتوثيق (Auth Server)",
+      url: "https://auth.sniper-sec.local",
+      type: "API",
+      verificationStatus: "Verified",
+      verifiedAt: new Date("2026-01-16T11:00:00Z"),
+      lastScanAt: new Date("2026-08-02T09:15:00Z"),
+      currentRiskScore: 42
+    },
+    {
+      id: "tgt-3",
+      projectId: "proj-2",
+      name: "تطبيق العملاء (Mobile Client API)",
+      url: "https://api.app.sniper-sec.local",
+      type: "API",
+      verificationStatus: "Verified",
+      verifiedAt: new Date("2026-02-02T12:00:00Z"),
+      lastScanAt: new Date("2026-08-03T16:00:00Z"),
+      currentRiskScore: 25
+    }
   ],
-  activeScans: [
-    { id: "scan-1", targetId: "tar-1", targetName: "الموقع الرئيسي", status: "Completed", progress: 100, startedAt: new Date(), scannerLogs: ["تم بدء الفحص", "اكتمل الفحص بنجاح"], vulnerabilitiesFoundCount: { Critical: 1, High: 2 } }
+  assets: [
+    { id: "asset-tgt-1", projectId: "proj-1", name: "البوابة الرئيسية (Main Gateway)", type: "Web App", createdAt: new Date() },
+    { id: "asset-tgt-2", projectId: "proj-1", name: "سيرفر الهوية والتوثيق (Auth Server)", type: "API", createdAt: new Date() },
+    { id: "asset-tgt-3", projectId: "proj-2", name: "تطبيق العملاء (Mobile Client API)", type: "API", createdAt: new Date() }
   ],
+  activeScans: [],
   vulnerabilities: [
-    { id: "vuln-1", targetId: "tar-1", targetName: "الموقع الرئيسي", title: "SQL Injection في نموذج تسجيل الدخول", type: "SQLi", severity: "Critical", cvssScore: 9.8, location: "/api/login", description: "ثغرة تسمح بتخطي المصادقة", impact: "الوصول غير المصرح للبيانات", remediation: "استخدام Prepared Statements", isFalsePositive: false, complianceMapping: { owasp: "A03:2021-Injection", iso27001: "A.14.2", pciDss: "Req 6.5.1" } }
+    {
+      id: "vuln-1",
+      targetId: "tgt-1",
+      targetName: "البوابة الرئيسية (Main Gateway)",
+      title: "ثغرة الحقن بأسئلة الاستعلام (SQL Injection in Search)",
+      type: "SQL Injection",
+      severity: "Critical",
+      cvssScore: 9.8,
+      location: "/api/search?q=",
+      description: "تسمح هذه الثغرة للمهاجم بتنفيذ الاستعلامات المباشرة على قاعدة البيانات واستخراج البيانات الحساسة.",
+      impact: "تسريب بيانات المستخدمين وتجاوز التوثيق.",
+      remediation: "استخدام الاستعلامات المحضرة (Parameterized Queries) وتعقيم المدخلات.",
+      isFalsePositive: false,
+      complianceMapping: ["OWASP A03:2021", "NCA-ECC:2020"]
+    },
+    {
+      id: "vuln-2",
+      targetId: "tgt-2",
+      targetName: "سيرفر الهوية والتوثيق (Auth Server)",
+      title: "ضعف تشفير رموز التوثيق (JWT Broken Signature Verification)",
+      type: "Broken Auth",
+      severity: "High",
+      cvssScore: 8.1,
+      location: "/api/auth/verify",
+      description: "عدم التحقق المناسب من توقيع JWT مما يسمح بتغيير الصلاحيات إلى مدير النظام.",
+      impact: "تجاوز التوثيق والوصول إلى صلاحيات المدير.",
+      remediation: "فرض التحقق المباشر من التوقيع باستخدام مفتاح سري قوي وعدم قبول خوارزمية 'none'.",
+      isFalsePositive: false,
+      complianceMapping: ["OWASP A07:2021"]
+    }
   ],
   reportsHistory: [],
-  bugBountyPrograms: [
-    { id: "bb-1", targetName: "تطبيق الهاتف الذكي", rewardRange: "$500 - $5,000", status: "Active", severityMultiplier: "1.5x", totalReports: 12, scope: "*.company.sa", outOfScope: "thirdparty.com" }
-  ],
-  bugBountyLeaderboard: [
-    { rank: 1, name: "طارق الشمري", points: 1450, totalEarned: "$12,500", badges: ["Elite Hunter", "Top Reporter"] }
-  ],
+  reportFiles: [],
+  bugBountyPrograms: [],
+  bugBountyLeaderboard: [],
   bugBountySubmissions: [],
-  remediations: []
+  remediations: [],
+  scanProfiles: [
+    {
+      id: "profile-deep",
+      name: "الفحص الهيكلي الشامل (Deep Security Audit)",
+      description: "فحص شامل يغطي Nmap, Subfinder, OWASP ZAP, Nuclei وتحديد الأخطاء البرمجية الهيكلية.",
+      engine: "Enterprise Multi-Engine Pipeline",
+      configuration: { depth: "full", timeout: 300, threads: 10, checkSsl: true },
+      severityPolicy: "Strict",
+      enabled: true
+    },
+    {
+      id: "profile-quick",
+      name: "الفحص السريع للثغرات (Quick Vulnerability Scan)",
+      description: "استطلاع سريع للمنافذ والخدمات النشطة دون إجهاد السيرفر.",
+      engine: "Fast Port & Header Recon",
+      configuration: { depth: "quick", timeout: 60, threads: 5, checkSsl: false },
+      severityPolicy: "Standard",
+      enabled: true
+    },
+    {
+      id: "profile-mobile",
+      name: "فحص تطبيقات الجوال (Mobile Security Audit)",
+      description: "تحليل الأذونات والترخيص وعناوين IP المسربة وتطبيق OWASP Mobile Top 10.",
+      engine: "ApkScanner Engine",
+      configuration: { depth: "mobile", timeout: 180, threads: 4, decompile: true },
+      severityPolicy: "Strict",
+      enabled: true
+    },
+    {
+      id: "profile-api",
+      name: "فحص واجهات البرمجة (API Security Audit)",
+      description: "فحص ثغرات REST & GraphQL ونقاط النهاية BOLA/IDOR وامتثال OWASP API Top 10.",
+      engine: "Zap & Nuclei API Modules",
+      configuration: { depth: "api", timeout: 200, threads: 8 },
+      severityPolicy: "Standard",
+      enabled: true
+    }
+  ],
+  notifications: [
+    {
+      id: "notif-1",
+      title: "اكتشاف ثغرة حرجة جديدة",
+      message: "تم الكشف عن ثغرة SQL Injection حرجة في خادم البوابة الرئيسية.",
+      severity: "Critical",
+      status: "Unread",
+      read: false
+    },
+    {
+      id: "notif-2",
+      title: "اكتمال الفحص الشامل",
+      message: "تمت بنجاح عملية الفحص الدوري لنطاقات الشركة وتحديث درجة المخاطر.",
+      severity: "Info",
+      status: "Read",
+      read: true
+    }
+  ],
+  aiConsultations: []
 };
+
+export function saveInMemoryStore() {
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(inMemoryStore, null, 2), "utf8");
+  } catch (err) {
+    console.error("❌ [DB Persistence] Error writing database.json:", err);
+  }
+}
+
+export function loadInMemoryStore() {
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const rawData = fs.readFileSync(DB_FILE, "utf8");
+      const parsed = JSON.parse(rawData);
+      if (typeof parsed === "object" && parsed !== null) {
+        for (const key of Object.keys(parsed)) {
+          if (Array.isArray(parsed[key]) && parsed[key].length > 0) {
+            inMemoryStore[key] = parsed[key];
+          }
+        }
+        console.log("📂 [DB Persistence] Database restored from database.json");
+        return;
+      }
+    }
+  } catch (err) {
+    console.error("❌ [DB Persistence] Failed to load database.json:", err);
+  }
+  saveInMemoryStore();
+}
+
+// Auto load store on initialization
+loadInMemoryStore();
 
 function getTableKey(table: any): string {
   if (!table) return "unknown";
@@ -75,13 +237,18 @@ function getTableKey(table: any): string {
   if (table === schema.auditLogs) return "auditLogs";
   if (table === schema.projects) return "projects";
   if (table === schema.targets) return "targets";
+  if (table === schema.assets) return "assets";
   if (table === schema.vulnerabilities) return "vulnerabilities";
   if (table === schema.reportsHistory) return "reportsHistory";
+  if (table === schema.reportFiles) return "reportFiles";
   if (table === schema.bugBountyPrograms) return "bugBountyPrograms";
   if (table === schema.bugBountyLeaderboard) return "bugBountyLeaderboard";
   if (table === schema.bugBountySubmissions) return "bugBountySubmissions";
   if (table === schema.activeScans) return "activeScans";
   if (table === schema.remediations) return "remediations";
+  if (table === schema.scanProfiles) return "scanProfiles";
+  if (table === schema.notifications) return "notifications";
+  if (table === schema.aiConsultations) return "aiConsultations";
   
   if (typeof table === "string") return table;
   if (table.dbName) return table.dbName;
@@ -90,9 +257,19 @@ function getTableKey(table: any): string {
 
 function extractWhereInfo(clause: any): { field?: string; value?: any } | null {
   if (!clause) return null;
-  if (clause.left && clause.right !== undefined) {
-    const field = clause.left.name || clause.left.fieldName || clause.left.key;
-    return { field, value: clause.right };
+  let field = clause.left?.name || clause.left?.fieldName || clause.left?.key || clause.field?.name || clause.field;
+  let value = clause.right !== undefined ? clause.right : clause.value;
+
+  if (value !== undefined && value !== null && typeof value === "object") {
+    if ("value" in value) {
+      value = value.value;
+    } else if ("param" in value) {
+      value = value.param;
+    }
+  }
+
+  if (field && value !== undefined) {
+    return { field, value };
   }
   return null;
 }
@@ -138,6 +315,7 @@ function insertRows(tableName: string, values: any) {
       }
     }
   }
+  saveInMemoryStore();
 }
 
 function updateRows(tableName: string, setValues: any, whereClause: any) {
@@ -160,6 +338,7 @@ function updateRows(tableName: string, setValues: any, whereClause: any) {
     }
     return r;
   });
+  saveInMemoryStore();
 }
 
 function deleteRows(tableName: string, whereClause: any) {
@@ -176,6 +355,7 @@ function deleteRows(tableName: string, whereClause: any) {
     }
     return rVal != targetVal;
   });
+  saveInMemoryStore();
 }
 
 function createQueryChain(operation: "select" | "insert" | "update" | "delete", initialData?: any) {
@@ -294,4 +474,5 @@ if (isPostgresConfigured) {
 }
 
 export const db: any = isPostgresConfigured && realDb ? realDb : mockDb;
+
 

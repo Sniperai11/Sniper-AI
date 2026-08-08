@@ -1,5 +1,6 @@
 import { db } from "../../src/db/index";
 import * as schema from "../../src/db/schema";
+import { DateUtils } from "../utils/date";
 import { eq, desc } from "drizzle-orm";
 
 export interface IAutoRemediationResult {
@@ -26,7 +27,7 @@ export class RemediationRepository {
       validationStatus: r.validationStatus,
       validationLogs: r.validationLogs,
       pullRequestUrl: r.pullRequestUrl,
-      generatedAt: r.generatedAt ? r.generatedAt.toISOString() : new Date().toISOString(),
+      generatedAt: DateUtils.toIsoString(r.generatedAt),
     }));
   }
 
@@ -44,7 +45,7 @@ export class RemediationRepository {
       validationStatus: r.validationStatus,
       validationLogs: r.validationLogs,
       pullRequestUrl: r.pullRequestUrl,
-      generatedAt: r.generatedAt ? r.generatedAt.toISOString() : new Date().toISOString(),
+      generatedAt: DateUtils.toIsoString(r.generatedAt),
     }));
   }
 
@@ -64,7 +65,7 @@ export class RemediationRepository {
       validationStatus: r.validationStatus,
       validationLogs: r.validationLogs,
       pullRequestUrl: r.pullRequestUrl,
-      generatedAt: r.generatedAt ? r.generatedAt.toISOString() : new Date().toISOString(),
+      generatedAt: DateUtils.toIsoString(r.generatedAt),
     };
   }
 

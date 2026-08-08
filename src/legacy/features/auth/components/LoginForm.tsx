@@ -169,28 +169,24 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       <div className="pt-4 border-t border-slate-900 space-y-2">
         <p className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          <span>الدخول السريع بحسابات مجهزة للاختبار:</span>
+          <span>الدخول السريع بالحساب الإداري الرئيسي:</span>
         </p>
 
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => handleQuickDemo('elhammoh2795@gmail.com', 'company')}
-            className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/50 text-right transition-colors"
-          >
-            <p className="text-xs font-bold text-white">إبراهيم العتيبي</p>
-            <p className="text-[10px] text-slate-400">Admin • CISO</p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleQuickDemo('hunter.tareq@security.sa', 'hunter')}
-            className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/50 text-right transition-colors"
-          >
-            <p className="text-xs font-bold text-white">طارق الشمري</p>
-            <p className="text-[10px] text-slate-400">Security Hunter</p>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setEmail('alridwanykick@gmail.com');
+            setPassword('R00t@2025');
+            handleQuickDemo('alridwanykick@gmail.com', 'company');
+          }}
+          className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/50 text-right transition-colors flex items-center justify-between"
+        >
+          <div>
+            <p className="text-xs font-bold text-white">المسؤول الرئيسي (System Admin)</p>
+            <p className="text-[10px] text-slate-400">alridwanykick@gmail.com • R00t@2025</p>
+          </div>
+          <span className="text-xs text-cyan-400 font-mono font-bold">Admin</span>
+        </button>
       </div>
 
       {onNavigateToRegister && (

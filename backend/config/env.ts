@@ -1,3 +1,4 @@
+import { Logger } from "../utils/logger";
 import { ApiError } from "../errors/ApiError";
 
 export const ENV = {
@@ -26,11 +27,11 @@ export function validateEnvironment() {
   }
 
   if (!ENV.GEMINI_API_KEY || ENV.GEMINI_API_KEY === "dummy_key") {
-    console.warn(
+    Logger.warning(
       "⚠️ [WARNING] مفتاح Gemini API غير مكوّن بشكل سليم (GEMINI_API_KEY is missing or dummy). لن تعمل ميزات التحليل الذكي في الوضع الحقيقي."
     );
   } else {
-    console.log("✅ [ENV] تم التحقق من سلامة مفتاح Gemini API بنجاح.");
+    Logger.info("✅ [ENV] تم التحقق من سلامة مفتاح Gemini API بنجاح.");
   }
 }
 

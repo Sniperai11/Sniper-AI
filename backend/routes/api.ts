@@ -4,12 +4,17 @@ import { attachUser, requireAdmin } from "../middleware/auth";
 import * as userController from "../controllers/userController";
 import { authController } from "../controllers/authController";
 import * as projectController from "../controllers/projectController";
-import * as scanController from "../controllers/scanController";
+import { scanController } from "../controllers/scanController";
+import { vulnerabilityController } from "../controllers/vulnerabilityController";
+import { scanProfileController } from "../controllers/scanProfileController";
 import * as reportController from "../controllers/reportController";
 import * as bountyController from "../controllers/bountyController";
 import * as chatController from "../controllers/chatController";
 import * as remediationController from "../controllers/remediationController";
+import { taskController } from "../controllers/taskController";
 import { commandCenterController } from "../controllers/commandCenterController";
+import { assetController } from "../controllers/assetController";
+import { notificationController } from "../controllers/notificationController";
 
 const router = Router();
 
@@ -55,8 +60,10 @@ router.post("/audit-logs/clear", requireAdmin, userController.clearAuditLogs);
 /*                             PROJECTS & TARGETS MAP                         */
 /* -------------------------------------------------------------------------- */
 router.get("/projects", projectController.getProjects);
-router.post("/projects/create", projectController.createProject);
-router.post("/projects/:id/targets/add", projectController.addTargetToProject);
+router.post("/projects", projectController.createProject); // Standard REST
+router.post("/projects/create", projectController.createProject); // Legacy compatibility
+router.post("/projects/:id/targets", projectController.addTargetToProject); // Standard REST
+router.post("/projects/:id/targets/add", projectController.addTargetToProject); // Legacy compatibility
 router.post("/targets/:id/verify", projectController.verifyTargetOwnership);
 router.post("/targets/:id/verify-bounty", projectController.verifyBountyTarget);
 
@@ -64,22 +71,33 @@ router.post("/targets/:id/verify-bounty", projectController.verifyBountyTarget);
 /*                             SECURITY SCAN ENGINE MAP                       */
 /* -------------------------------------------------------------------------- */
 router.get("/scans", scanController.getActiveScans);
-router.get("/scans/profiles", scanController.getScanProfiles);
+router.get("/scans/profiles", scanProfileController.getScanProfiles);
+router.get("/scan-profiles", scanProfileController.getScanProfiles);
+router.post("/scan-profiles", requireAdmin, scanProfileController.createScanProfile);
+router.get("/assets", assetController.getAssets);
+router.post("/assets", assetController.createAsset);
+router.get("/notifications", notificationController.getNotifications);
+router.post("/notifications/:id/read", notificationController.markAsRead);
 router.post("/scans", scanController.startTargetScan);
 router.get("/scans/:id", scanController.getScanById);
 router.post("/scans/:id/stop", scanController.stopScan);
 router.post("/targets/:id/scan", scanController.startTargetScan);
-router.get("/vulnerabilities", scanController.getVulnerabilities);
-router.get("/vulnerabilities/:id", scanController.getVulnerabilityById);
-router.patch("/vulnerabilities/:id/owner", scanController.updateVulnerabilityOwner);
-router.post("/vulnerabilities/:id/ai-analyze", scanController.aiAnalyzeVulnerability);
-router.post("/vulnerabilities/:id/toggle-false-positive", scanController.toggleVulnerabilityFalsePositive);
+router.get("/vulnerabilities", vulnerabilityController.getVulnerabilities);
+router.get("/vulnerabilities/:id", vulnerabilityController.getVulnerabilityById);
+router.patch("/vulnerabilities/:id/owner", vulnerabilityController.updateVulnerabilityOwner);
+router.patch("/vulnerabilities/:id/state", vulnerabilityController.updateVulnerabilityState);
+router.post("/vulnerabilities/:id/state", vulnerabilityController.updateVulnerabilityState);
+router.post("/vulnerabilities/:id/ai-analyze", vulnerabilityController.aiAnalyzeVulnerability);
+router.post("/vulnerabilities/:id/toggle-false-positive", vulnerabilityController.toggleVulnerabilityFalsePositive);
 
 /* -------------------------------------------------------------------------- */
 /*                             COMPREHENSIVE REPORTS MAP                      */
 /* -------------------------------------------------------------------------- */
 router.get("/projects/:projectId/report", reportController.createReport);
+router.post("/projects/:projectId/report", reportController.createReport);
+router.post("/reports/generate", reportController.createReport);
 router.get("/reports/history", reportController.getReportsHistory);
+router.get("/reports/:id/download", reportController.downloadReport);
 
 /* -------------------------------------------------------------------------- */
 /*                            BUG BOUNTY PROGRAMS MAP                        */
@@ -93,11 +111,22 @@ router.post("/bugbounty/generate-report", bountyController.aiGenerateBountyDraft
 /*                               AI CHATBOT ADVISOR                           */
 /* -------------------------------------------------------------------------- */
 router.post("/chat", chatController.sendMessageToAdvisor);
+router.get("/ai-consultations", chatController.getConsultations);
 
 /* -------------------------------------------------------------------------- */
 /*                        AUTO REMEDIATION & SELF HEALING MAP                 */
 /* -------------------------------------------------------------------------- */
 router.get("/remediations", remediationController.getRemediations);
+router.post("/remediations/bulk", requireAdmin, remediationController.performBulkRemediation);
 router.post("/vulnerabilities/:id/remediate", requireAdmin, remediationController.performRemediation);
+
+/* -------------------------------------------------------------------------- */
+/*                            SECURITY TASKS MAP                              */
+/* -------------------------------------------------------------------------- */
+router.get("/tasks", taskController.getTasks);
+router.post("/tasks", taskController.createTask);
+router.patch("/tasks/:id", taskController.updateTaskStatus);
+router.post("/tasks/:id/status", taskController.updateTaskStatus);
+router.post("/tasks/:id/ai-remediate", taskController.executeAITaskRemediation);
 
 export default router;

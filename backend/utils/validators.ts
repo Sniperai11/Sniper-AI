@@ -17,6 +17,15 @@ export class Validators {
       .replace(/\//g, "&#x2F;");
   }
 
+  public static sanitizeUrl(url: string): string {
+    if (!url) return "";
+    let clean = url.trim().replace(/[<>'"]/g, "");
+    if (!clean.match(/^https?:\/\//i) && !clean.includes("://")) {
+      clean = `https://${clean}`;
+    }
+    return clean;
+  }
+
   public static requireFields(body: any, fields: string[]): void {
     const missing: string[] = [];
     for (const field of fields) {

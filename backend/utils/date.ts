@@ -1,6 +1,26 @@
 export class DateUtils {
-  public static toIsoString(date: Date = new Date()): string {
-    return date.toISOString();
+  public static toIsoString(val?: any): string {
+    if (!val) return new Date().toISOString();
+    if (typeof val === "string") return val;
+    if (val instanceof Date) return val.toISOString();
+    try {
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+    } catch {
+      return new Date().toISOString();
+    }
+  }
+
+  public static toOptionalIsoString(val?: any): string | undefined {
+    if (!val) return undefined;
+    if (typeof val === "string") return val;
+    if (val instanceof Date) return val.toISOString();
+    try {
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? undefined : d.toISOString();
+    } catch {
+      return undefined;
+    }
   }
 
   public static formatDateArabic(dateStr: string): string {
@@ -27,3 +47,4 @@ export class DateUtils {
     }
   }
 }
+

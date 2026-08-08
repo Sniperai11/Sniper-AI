@@ -5,6 +5,8 @@ export interface IScanJob {
   id: string;
   targetId: string;
   targetName: string;
+  userId?: string;
+  userEmail?: string;
   status: "Scanning" | "Analyzing" | "Completed" | "Failed";
   progress: number;
   startedAt: string;

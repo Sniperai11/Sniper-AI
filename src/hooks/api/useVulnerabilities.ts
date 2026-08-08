@@ -116,3 +116,15 @@ export const useAuditLogs = (entityId: string) => {
     enabled: !!entityId,
   });
 };
+
+export const useBulkRemediate = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (vulnerabilityIds: string[]) => vulnerabilitiesService.bulkRemediate(vulnerabilityIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vulnerabilities'] });
+      queryClient.invalidateQueries({ queryKey: ['remediations'] });
+    },
+  });
+};

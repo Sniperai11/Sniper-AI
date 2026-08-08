@@ -1,7 +1,9 @@
 export interface IUser {
   id?: string;
+  companyId?: string;
   name?: string;
   email: string;
+  password?: string;
   role: "Admin" | "Security Analyst" | "Viewer";
   joinedAt?: string;
 }

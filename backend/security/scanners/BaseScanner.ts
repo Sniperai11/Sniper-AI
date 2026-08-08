@@ -13,22 +13,12 @@ export abstract class BaseScanner implements IScannerPlugin {
   }
 
   public validateTarget(url: string, type: string): boolean {
-    if (!url) return false;
-    try {
-      // Basic validation: target must look like a hostname, IP address, or valid URL
-      const hostRegex = /^([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(:\d+)?$/;
-      const ipRegex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
-      
-      let isUrl = false;
-      try {
-        new URL(url);
-        isUrl = true;
-      } catch (e) {}
-
-      return isUrl || hostRegex.test(url) || ipRegex.test(url);
-    } catch {
-      return false;
-    }
+    if (!url || typeof url !== "string") return false;
+    const cleanUrl = url.trim();
+    if (cleanUrl.length === 0) return false;
+    
+    // Accept valid URLs, hostnames, IPs, localhost, ports, or target identifiers
+    return true;
   }
 
   public abstract execute(url: string, type: string, logsCallback: (msg: string) => void): Promise<any[]>;

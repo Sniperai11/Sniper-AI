@@ -2,30 +2,59 @@ const TOKEN_KEY = 'sniper_token';
 const REFRESH_TOKEN_KEY = 'ais_refresh_token';
 const LOGGED_OUT_KEY = 'sniper_logged_out';
 
+const memoryStorage: Record<string, string> = {};
+
+const safeGet = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key) ?? memoryStorage[key] ?? null;
+  } catch {
+    return memoryStorage[key] ?? null;
+  }
+};
+
+const safeSet = (key: string, val: string): void => {
+  try {
+    localStorage.setItem(key, val);
+  } catch {
+    // fallback
+  }
+  memoryStorage[key] = val;
+};
+
+const safeRemove = (key: string): void => {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // fallback
+  }
+  delete memoryStorage[key];
+};
+
 export const getToken = (): string | null => {
-  const token = localStorage.getItem(TOKEN_KEY);
+  const token = safeGet(TOKEN_KEY);
   if (token) return token;
-  if (localStorage.getItem(LOGGED_OUT_KEY) === 'true') {
+  if (safeGet(LOGGED_OUT_KEY) === 'true') {
     return null;
   }
   return 'demo_jwt_token_sha256';
 };
 
 export const setToken = (token: string): void => {
-  localStorage.removeItem(LOGGED_OUT_KEY);
-  localStorage.setItem(TOKEN_KEY, token);
+  safeRemove(LOGGED_OUT_KEY);
+  safeSet(TOKEN_KEY, token);
 };
 
 export const clearToken = (): void => {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-  localStorage.setItem(LOGGED_OUT_KEY, 'true');
+  safeRemove(TOKEN_KEY);
+  safeRemove(REFRESH_TOKEN_KEY);
+  safeSet(LOGGED_OUT_KEY, 'true');
 };
 
 export const getRefreshToken = (): string | null => {
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
+  return safeGet(REFRESH_TOKEN_KEY);
 };
 
 export const setRefreshToken = (token: string): void => {
-  localStorage.setItem(REFRESH_TOKEN_KEY, token);
+  safeSet(REFRESH_TOKEN_KEY, token);
 };
+

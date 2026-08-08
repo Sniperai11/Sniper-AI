@@ -11,13 +11,18 @@ export class Formatter {
     };
   }
 
-  public static error(errors: string | string[], message: string = "حدث خطأ أثناء تنفيذ العملية"): IApiResponse<null> {
+  public static error(errors: string | string[], message: string = "حدث خطأ أثناء تنفيذ العملية"): any {
     const errList = Array.isArray(errors) ? errors : [errors];
     return {
       success: false,
       message,
       data: null,
       errors: errList,
+      error: {
+        code: 500,
+        message: message,
+        details: errList
+      },
       timestamp: new Date().toISOString()
     };
   }
