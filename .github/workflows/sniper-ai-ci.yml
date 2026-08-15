@@ -1,0 +1,129 @@
+name: Sniper AI CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+  pull_request:
+    branches:
+      - main
+      - develop
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sniper-ai-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  quality:
+    name: TypeScript Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check
+        run: npm run lint
+
+
+  build:
+    name: Production Build
+    runs-on: ubuntu-latest
+    needs: quality
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Sniper AI
+        run: npm run build
+
+      - name: Verify build artifacts
+        run: |
+          test -f dist/index.html
+          test -f dist/server.cjs
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sniper-ai-production
+          path: dist/
+
+
+  smoke-test:
+    name: Production Smoke Test
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Start production server
+        env:
+          NODE_ENV: production
+          PORT: 3000
+          GEMINI_API_KEY: dummy_key
+        run: |
+          npm start > server.log 2>&1 &
+          echo $! > server.pid
+
+      - name: Wait for server
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          cat server.log
+          exit 1
+
+      - name: Test readiness endpoint
+        run: curl -fsS http://127.0.0.1:3000/ready
+
+      - name: Test liveness endpoint
+        run: curl -fsS http://127.0.0.1:3000/live
+
+      - name: Show server logs on failure
+        if: failure()
+        run: cat server.log
